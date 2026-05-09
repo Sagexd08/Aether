@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# AETHER AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AETHER AI is a cinematic multimodal generative AI platform scaffolded as a monorepo with a premium Next.js frontend and FastAPI backend.
 
-Currently, two official plugins are available:
+## Workspace structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `frontend/web` — Next.js App Router frontend
+- `backend/api` — FastAPI backend
+- `ml/service` — model routing and inference service scaffold
+- `packages/types` — shared TypeScript contracts
+- `packages/config` — shared config package stub
+- `infra/docker-compose.yml` — local infrastructure for Postgres, Redis, web, api, worker, ml
 
-## React Compiler
+## Local development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Install workspace dependencies
 
-## Expanding the ESLint configuration
+Use `pnpm install` from the repo root after enabling pnpm.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Start all apps
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Build all apps
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm build
 ```
+
+### Docker infrastructure
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+## Environment
+
+Use the provided `.env.example` files:
+
+- `frontend/web/.env.example`
+- `backend/api/.env.example`
+
+Do not hardcode provider secrets. Set `HF_TOKEN` only in environment configuration. In the current scaffold, Hugging Face is treated as the primary provider path.
+
+## Current implementation state
+
+This repository now includes:
+
+- premium landing page scaffold in `frontend/web`
+- cinematic auth pages
+- authenticated workspace shell
+- command bar scaffold
+- gallery, agents, workflows, billing, datasets, settings, team, video, and audio route scaffolds
+- FastAPI health, auth, generation, SSE, worker, and websocket scaffolds in `backend/api`
+- ML routing service scaffold in `ml/service`
+- provider routing placeholder with Hugging Face as the primary env-based provider path
+- Redis/Celery/WebSocket scaffolding
+
+## Security note
+
+The Hugging Face token that was pasted in chat should be treated as compromised and rotated. Keep all provider tokens server-side only.

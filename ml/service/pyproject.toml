@@ -1,0 +1,16 @@
+[project]
+name = "aether-ml"
+version = "0.1.0"
+description = "AETHER AI model routing and inference service"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116.1",
+  "httpx>=0.28.1",
+  "pydantic-settings>=2.10.1",
+  "uvicorn[standard]>=0.35.0"
+]
+
+[tool.uv]
+dev-dependencies = [
+  "ruff>=0.12.10"
+]
