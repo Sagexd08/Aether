@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --aether-bg: #020305;
+  --aether-bg-deep: #060810;
+  --aether-surface: #0c0f1a;
+  --aether-panel: rgba(12, 15, 26, 0.72);
+  --aether-panel-strong: rgba(12, 15, 26, 0.9);
+  --aether-border: rgba(255, 255, 255, 0.08);
+  --aether-foreground: #f7fafc;
+  --aether-muted: #a0aec0;
+  --aether-cyan: #63b3ed;
+  --aether-violet: #a78bfa;
+  --aether-amber: #fbbf24;
+  --aether-emerald: #34d399;
+}
+
+@theme inline {
+  --color-background: var(--aether-bg);
+  --color-foreground: var(--aether-foreground);
+  --color-muted: var(--aether-muted);
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(99, 179, 237, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(167, 139, 250, 0.14), transparent 24%),
+    linear-gradient(180deg, var(--aether-bg) 0%, var(--aether-bg-deep) 55%, var(--aether-surface) 100%);
+  color: var(--aether-foreground);
+  font-family: 'DM Sans', sans-serif;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.025), transparent 30%),
+    radial-gradient(circle at center, rgba(255,255,255,0.02), transparent 58%);
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.glass-panel {
+  background: var(--aether-panel);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid var(--aether-border);
+  box-shadow:
+    0 10px 40px rgba(2, 6, 23, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.glow-ring {
+  box-shadow:
+    0 0 0 1px rgba(99, 179, 237, 0.18),
+    0 0 40px rgba(99, 179, 237, 0.12);
+}
+
+.fade-rise {
+  animation: fadeRise 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.fade-rise-delay {
+  animation: fadeRise 0.8s ease-out 0.15s forwards;
+  opacity: 0;
+}
+
+.fade-rise-delay-2 {
+  animation: fadeRise 0.8s ease-out 0.3s forwards;
+  opacity: 0;
+}
+
+@keyframes fadeRise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
