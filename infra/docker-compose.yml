@@ -41,10 +41,10 @@ services:
 
   web:
     build:
-      context: ../frontend/web
+      context: ../frontend/app
       dockerfile: Dockerfile
     env_file:
-      - ../frontend/web/.env.example
+      - ../frontend/app/.env.example
     ports:
       - '3000:3000'
     depends_on:

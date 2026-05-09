@@ -1,5 +1,5 @@
 {
-  "name": "@aether/web",
+  "name": "@aether/app",
   "version": "0.1.0",
   "private": true,
   "scripts": {

@@ -4,7 +4,7 @@ AETHER AI is a cinematic multimodal generative AI platform scaffolded as a monor
 
 ## Workspace structure
 
-- `frontend/web` — Next.js App Router frontend
+- `frontend/app` — Next.js App Router frontend
 - `backend/api` — FastAPI backend
 - `ml/service` — model routing and inference service scaffold
 - `packages/types` — shared TypeScript contracts
@@ -39,7 +39,7 @@ docker compose -f infra/docker-compose.yml up --build
 
 Use the provided `.env.example` files:
 
-- `frontend/web/.env.example`
+- `frontend/app/.env.example`
 - `backend/api/.env.example`
 
 Do not hardcode provider secrets. Set `HF_TOKEN` only in environment configuration. In the current scaffold, Hugging Face is treated as the primary provider path.
@@ -48,7 +48,7 @@ Do not hardcode provider secrets. Set `HF_TOKEN` only in environment configurati
 
 This repository now includes:
 
-- premium landing page scaffold in `frontend/web`
+- premium landing page scaffold in `frontend/app`
 - cinematic auth pages
 - authenticated workspace shell
 - command bar scaffold

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 30
     refresh_token_ttl_days: int = 14
     hf_token: str | None = None
+    neon_api_url: str | None = None
+    neon_auth_url: str | None = None
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
     replicate_api_token: str | None = None

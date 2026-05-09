@@ -14,7 +14,7 @@ importers:
 
   backend/api: {}
 
-  frontend/web:
+  frontend/app:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.2.1
