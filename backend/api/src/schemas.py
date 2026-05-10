@@ -23,11 +23,16 @@ class UserResponse(OrmModel):
     name: str
     credits_remaining: int
     role: str = 'owner'
+    workspace_id: str | None = None
 
 
 class AuthResponse(BaseModel):
     access_token: str
     user: UserResponse
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
 
 
 class GenerateRequest(BaseModel):
