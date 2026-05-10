@@ -37,3 +37,45 @@ export interface AuthResponse {
   accessToken: string
   user: User
 }
+
+export interface Workspace {
+  id: string
+  name: string
+  plan: 'studio' | 'pro' | 'enterprise'
+  createdAt: string
+}
+
+export interface Project {
+  id: string
+  workspaceId: string
+  name: string
+  description: string | null
+  mode: 'multimodal' | 'text' | 'image' | 'video'
+  createdAt: string
+}
+
+export interface WorkspaceDetail extends Workspace {
+  projects: Project[]
+}
+
+export interface UserWithWorkspace extends User {
+  workspaceId: string
+}
+
+// Server → Client WebSocket events
+export type WSMessage =
+  | { type: 'connected'; workspaceId: string; userId: string; ts: number }
+  | { type: 'error'; code: string; message: string; ts: number }
+  | { type: 'pong'; ts: number }
+  | { type: 'workspace.presence'; userIds: string[]; ts: number }
+  | { type: 'generation.queued'; generationId: string; ts: number }
+  | { type: 'generation.progress'; generationId: string; progress: number; ts: number }
+  | { type: 'generation.completed'; generationId: string; outputUrl?: string; ts: number }
+  | { type: 'generation.failed'; generationId: string; error: string; ts: number }
+  | { type: 'training.progress'; jobId: string; progress: number; workerStatus: string; ts: number }
+  | { type: 'training.completed'; jobId: string; artifactPaths: Record<string, string>; ts: number }
+  | { type: 'notification'; id: string; title: string; body: string; kind: string; ts: number }
+
+// Client → Server WebSocket messages
+export type WSClientMessage =
+  | { type: 'ping'; ts: number }
