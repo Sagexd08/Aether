@@ -138,7 +138,8 @@ Redis is not used for session storage (JWT is stateless). It is only used for pr
 | `src/schemas.py` | Add `RefreshResponse`, extend `UserResponse` with `workspace_id` |
 | `src/security.py` | Add `create_refresh_token`, `verify_refresh_token`, `rotate_refresh_token` |
 | `src/routers/auth.py` | Add `/me`, `/refresh`; extend `/signup`, `/signin`, `/signout` |
-| `src/realtime.py` | Replace echo with auth-gated workspace WS + Redis presence |
+| `src/realtime.py` | Replace echo with auth-gated workspace WS + Redis presence + pong handler |
+| `src/main.py` | Add `X-Request-ID` response middleware (echo request header or generate if absent) |
 | `src/routers/workspaces.py` | No change needed (already has list + CRUD) |
 | `src/config.py` | No change needed |
 | `src/db.py` | No change needed |
@@ -155,6 +156,7 @@ Three files under `src/lib/api/`:
 **`client.ts`** — base request function  
 - Reads `NEXT_PUBLIC_API_URL` from env  
 - Attaches `Authorization: Bearer <token>` from auth store  
+- Generates a `X-Request-ID` header on every request (UUID v4, e.g. `crypto.randomUUID()`). Logged client-side at debug level. Backend echoes it in the response as `X-Request-ID` so errors can be correlated across frontend logs and backend audit logs without needing a tracing backend in Sprint 1.  
 - On 401 response: calls `silentRefresh()`, retries the original request once  
 - On second 401: clears auth state, redirects to `/signin`  
 - Concurrent 401 handling: maintains a module-level `refreshPromise: Promise | null` singleton — if a refresh is already in flight when a second 401 arrives, the second caller awaits the same promise rather than triggering a second refresh request. Promise is cleared (set to null) when the refresh settles.  
@@ -201,6 +203,9 @@ interface AuthState {
 
 Status starts as `'loading'` until hydration completes. The root layout renders a full-screen skeleton during `'loading'` to prevent layout flash.
 
+**Token storage model — Sprint 1 implementation + migration note:**  
+Sprint 1 stores the access token in localStorage (`aether_token`) for simplicity, matching the existing codebase pattern. This is acceptable because: (a) HTTPS is enforced in production, (b) the access token TTL is 30 minutes, (c) the refresh token is httpOnly-only and never accessible to JS. Planned migration in Sprint 2/3: move access token to an in-memory store (module-level variable, not Zustand — survives re-renders but not page reloads). On reload, the boot sequence calls `silentRefresh()` immediately (no localStorage read) to restore the in-memory token from the httpOnly cookie. This eliminates XSS blast radius for the access token and simplifies SSR integration. The API client and auth store are designed with this migration in mind — token reads go through a single `getToken()` helper that will be trivially redirected to memory in Sprint 2/3.
+
 ### 4.3 Next.js middleware (`src/middleware.ts`)
 
 **Protected routes** (require authentication):
@@ -243,7 +248,29 @@ This is a fast, cookie-based heuristic check. The true auth validation happens i
 - Error from API shown below the button with a subtle shake animation
 - Google/GitHub OAuth buttons show "Coming soon" tooltip instead of being non-functional silently
 
-### 4.5 Skeleton loader components (`src/components/ui/skeleton.tsx`)
+### 4.5 Toast / notification system (`src/components/ui/toast.tsx`)
+
+A centralized, imperative toast system used throughout the app. Built on Radix `Toast` primitives.
+
+```ts
+// Public API — call from anywhere, no React context required
+toast.success(message: string, options?: { duration?: number })
+toast.error(message: string, options?: { duration?: number })
+toast.info(message: string, options?: { duration?: number })
+toast.warning(message: string, options?: { duration?: number })
+```
+
+**Implementation:** a Zustand store (`useToastStore`) holds a queue of `{ id, kind, message, duration }` items. `ToastRegion` (mounted once in root layout, outside `AppProviders`) reads the store and renders a fixed-position stack in the bottom-right corner. Each toast auto-dismisses after `duration` ms (default 4000). Framer Motion handles enter/exit animations (slide up + fade).
+
+**Sprint 1 usage:**
+- `toast.success('Project created')` — after optimistic project creation confirms
+- `toast.error('Session expired — please sign in again')` — on final auth failure
+- `toast.info('Reconnecting…')` — on WS reconnect attempt
+- `toast.success('Connected')` — on WS reconnect success
+
+**Sprint 2+ usage:** generation queued, generation completed, generation failed — all feed this same system from WS events.
+
+### 4.5b Skeleton loader components (`src/components/ui/skeleton.tsx`)
 
 Three primitives built on a shared shimmer animation:
 
@@ -303,7 +330,9 @@ function useWorkspaceWebSocket(workspaceId: string): {
 
 **Token in URL:** the hook reads `token` from `useAuthStore()` and appends it as a query param. If token rotates (silent refresh), next reconnect uses the new token automatically.
 
-**WS base URL:** the hook reads `process.env.NEXT_PUBLIC_WS_URL` (e.g. `ws://localhost:8000`) for the connection base URL, appending `/{workspace_id}?token={token}`.
+**WS base URL:** the hook reads `process.env.NEXT_PUBLIC_WS_URL` (e.g. `ws://localhost:8000`) for the connection base URL, appending `/ws/{workspace_id}?token={token}`.
+
+**Heartbeat:** the hook sends `{ type: 'ping', ts: Date.now() }` every 15 seconds after connection. The server responds with `{ type: 'pong', ts }`. If no pong is received within 10 seconds of a ping, the connection is treated as stale and closed, triggering the reconnect backoff sequence. This handles mobile sleep, network transitions, and tab throttling. The Redis presence TTL (30s) is intentionally longer than the ping interval (15s) — a single missed ping does not drop presence; a genuine disconnect (two missed pings before server-side TTL expiry) does.
 
 **Integration:** `WorkspaceShell` mounts this hook when `workspace.id` is available. The inspector panel's "Live system" card displays the connection status and last event type.
 
@@ -322,6 +351,7 @@ type WSMessage =
   | { type: 'training.progress'; jobId: string; progress: number; workerStatus: string; ts: number }
   | { type: 'training.completed'; jobId: string; artifactPaths: Record<string, string>; ts: number }
   | { type: 'notification'; id: string; title: string; body: string; kind: string; ts: number }
+  | { type: 'pong'; ts: number }
 
 // Client → Server (Sprint 1: only ping)
 type WSClientMessage =
@@ -329,6 +359,35 @@ type WSClientMessage =
 ```
 
 The generation and training event types are defined now but not produced until Sprints 2 and 4. Defining them in Sprint 1 means Sprint 2 just needs to publish — the consumer infrastructure is already in place.
+
+### 4.10 TanStack Query invalidation conventions
+
+Standardized patterns established in Sprint 1 so all future sprints follow the same conventions:
+
+| Query key | Invalidated by | Stale time |
+|---|---|---|
+| `['me']` | `signOut()`, `silentRefresh()` succeeds | 60s |
+| `['workspaces']` | (nothing in Sprint 1) | 60s |
+| `['projects', workspaceId]` | `createProject()` success | 30s |
+| `['notifications', workspaceId]` | WS `notification` event received | 0s (always fresh) |
+
+**Convention:** all mutation `onSuccess` handlers call `queryClient.invalidateQueries({ queryKey: [...] })` using these exact key shapes. No ad-hoc string keys anywhere. Query key constants are exported from `src/lib/api/query-keys.ts` so they are never duplicated:
+
+```ts
+export const QK = {
+  me: () => ['me'] as const,
+  workspaces: () => ['workspaces'] as const,
+  projects: (workspaceId: string) => ['projects', workspaceId] as const,
+  notifications: (workspaceId: string) => ['notifications', workspaceId] as const,
+  // Sprint 2+ keys added here:
+  generations: (workspaceId: string) => ['generations', workspaceId] as const,
+  datasets: (workspaceId: string) => ['datasets', workspaceId] as const,
+  trainingJobs: (workspaceId: string) => ['training-jobs', workspaceId] as const,
+  models: (workspaceId: string) => ['models', workspaceId] as const,
+}
+```
+
+Sprint 2–4 keys are stubbed here now so there is never a "what key do I use?" ambiguity later.
 
 ---
 
@@ -481,9 +540,10 @@ frontend/app/src/
   middleware.ts              ← NEW: route guard
   lib/
     api/
-      client.ts              ← NEW: typed base client with silent refresh
+      client.ts              ← NEW: typed base client with silent refresh + X-Request-ID
       auth.ts                ← NEW: auth API functions
       workspaces.ts          ← NEW: workspace/project API functions
+      query-keys.ts          ← NEW: canonical TanStack Query key constants
     store/
       auth.ts                ← NEW: auth + workspace state
       app-shell.ts           ← extend: remove hardcoded data
@@ -492,6 +552,7 @@ frontend/app/src/
   components/
     ui/
       skeleton.tsx           ← NEW: SkeletonBlock, SkeletonText, SkeletonCard, SkeletonAvatar
+      toast.tsx              ← NEW: ToastRegion + imperative toast API
     auth/
       auth-card.tsx          ← replace with react-hook-form + zod version
     workspace/
