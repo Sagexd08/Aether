@@ -11,6 +11,10 @@ importers:
       turbo:
         specifier: ^2.5.4
         version: 2.9.12
+    optionalDependencies:
+      '@tailwindcss/oxide-linux-x64-gnu':
+        specifier: 4.3.0
+        version: 4.3.0
 
   backend/api: {}
 

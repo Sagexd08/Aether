@@ -11,12 +11,16 @@ class Settings(BaseSettings):
     jwt_algorithm: str = 'HS256'
     access_token_ttl_minutes: int = 30
     refresh_token_ttl_days: int = 14
-    hf_token: str | None = None
-    neon_api_url: str | None = None
-    neon_auth_url: str | None = None
-    openai_api_key: str | None = None
-    anthropic_api_key: str | None = None
-    replicate_api_token: str | None = None
+    huggingface_token: str | None = None
+    kaggle_username: str | None = None
+    kaggle_key: str | None = None
+    object_storage_url: str | None = None
+    object_storage_access_key: str | None = None
+    object_storage_secret_key: str | None = None
+    model_registry_path: str = './artifacts/models'
+    training_output_path: str = './artifacts/training'
+    upload_max_mb: int = 512
+    rate_limit_per_minute: int = 120
 
     model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore')
 

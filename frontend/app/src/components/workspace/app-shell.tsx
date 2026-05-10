@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Bell, Bot, FolderKanban, GalleryVerticalEnd, LayoutDashboard, PanelsTopLeft, Settings2, Sparkles, Video, Volume2, Wallet } from 'lucide-react'
+import { Bell, Bot, BrainCircuit, FolderKanban, GalleryVerticalEnd, LayoutDashboard, PanelsTopLeft, Settings2, Sparkles, Video, Volume2, Wallet } from 'lucide-react'
 import { useAppShellStore } from '@/lib/store/app-shell'
 import { cn } from '@/lib/utils'
 
-const items: { href: Route; label: string; icon: typeof LayoutDashboard }[] = [
+const items: { href: string; label: string; icon: typeof LayoutDashboard }[] = [
   { href: '/workspace', label: 'Workspace', icon: LayoutDashboard },
   { href: '/generate', label: 'Generate', icon: Sparkles },
   { href: '/gallery', label: 'Gallery', icon: GalleryVerticalEnd },
@@ -15,6 +15,8 @@ const items: { href: Route; label: string; icon: typeof LayoutDashboard }[] = [
   { href: '/agents', label: 'Agents', icon: Bot },
   { href: '/workflows', label: 'Workflows', icon: PanelsTopLeft },
   { href: '/datasets', label: 'Datasets', icon: FolderKanban },
+  { href: '/training', label: 'Training', icon: BrainCircuit },
+  { href: '/models', label: 'Models', icon: Bot },
   { href: '/billing', label: 'Billing', icon: Wallet },
   { href: '/settings', label: 'Settings', icon: Settings2 },
 ]
@@ -32,7 +34,7 @@ export function WorkspaceShell({ title, subtitle, children }: { title: string; s
           </div>
           <nav className="space-y-2">
             {items.map(({ href, label, icon: Icon }, index) => (
-              <Link key={href} href={href} className={cn('group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-white/65 transition hover:bg-white/6 hover:text-white', index === 0 && 'glow-ring bg-white/7 text-white')}>
+              <Link key={href} href={href as Route} className={cn('group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm text-white/65 transition hover:bg-white/6 hover:text-white', index === 0 && 'glow-ring bg-white/7 text-white')}>
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className={cn('transition-opacity', navCollapsed && 'hidden')}>{label}</span>
               </Link>

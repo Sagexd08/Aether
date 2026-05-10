@@ -1,15 +1,48 @@
+'use client'
+
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import type { Route } from 'next'
 
 export function AuthCard({
   title,
   description,
   footer,
+  mode = 'signin',
 }: {
   title: string
   description: string
   footer: React.ReactNode
+  mode?: 'signin' | 'signup'
 }) {
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function submit() {
+    setError(null)
+    setLoading(true)
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'}/api/auth/${mode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mode === 'signup' ? { email, name: name || email.split('@')[0], password } : { email, password }),
+      })
+      if (!response.ok) throw new Error(await response.text())
+      const payload = await response.json()
+      window.localStorage.setItem('aether_token', payload.access_token)
+      router.push('/workspace')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="glass-panel glow-ring w-full max-w-md rounded-[32px] p-8 md:p-10">
       <div className="mb-8">
@@ -18,15 +51,22 @@ export function AuthCard({
         <p className="mt-3 text-sm leading-7 text-white/60">{description}</p>
       </div>
       <div className="space-y-4">
+        {mode === 'signup' ? (
+          <label className="block text-sm text-white/70">
+            <span className="mb-2 block">Name</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[#63b3ed]/40 focus:bg-white/8" placeholder="Sage" />
+          </label>
+        ) : null}
         <label className="block text-sm text-white/70">
           <span className="mb-2 block">Email</span>
-          <input className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[#63b3ed]/40 focus:bg-white/8" placeholder="you@aether.ai" />
+          <input value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[#63b3ed]/40 focus:bg-white/8" placeholder="you@aether.ai" />
         </label>
         <label className="block text-sm text-white/70">
           <span className="mb-2 block">Password</span>
-          <input type="password" className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[#a78bfa]/40 focus:bg-white/8" placeholder="••••••••" />
+          <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-[#a78bfa]/40 focus:bg-white/8" placeholder="••••••••" />
         </label>
-        <button className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:scale-[1.01]">Continue</button>
+        <button onClick={submit} disabled={loading || !email || !password} className="w-full rounded-2xl bg-white px-4 py-3 text-sm font-medium text-black transition hover:scale-[1.01] disabled:opacity-50">{loading ? 'Securing session...' : 'Continue'}</button>
+        {error ? <p className="text-sm text-rose-300">{error}</p> : null}
       </div>
       <div className="mt-6 flex items-center gap-3 text-xs text-white/45">
         <div className="h-px flex-1 bg-white/10" />
