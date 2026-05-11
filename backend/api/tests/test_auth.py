@@ -111,3 +111,35 @@ async def test_refresh_issues_new_access_token(client):
 async def test_refresh_without_cookie_returns_401(client):
     resp = await client.post("/api/auth/refresh")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_signout_clears_cookie(client):
+    signup_resp = await client.post("/api/auth/signup", json={
+        "email": "signout@aether.ai", "name": "Out", "password": "pass123!"
+    })
+    token = signup_resp.json()["access_token"]
+    resp = await client.post(
+        "/api/auth/signout",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "signed_out"
+    assert resp.cookies.get("aether_refresh") == "" or "aether_refresh" not in resp.cookies
+
+
+@pytest.mark.asyncio
+async def test_refresh_after_signout_returns_401(client):
+    signup_resp = await client.post("/api/auth/signup", json={
+        "email": "signout2@aether.ai", "name": "Out2", "password": "pass123!"
+    })
+    token = signup_resp.json()["access_token"]
+    refresh_cookie = signup_resp.cookies.get("aether_refresh")
+    # Sign out — revokes the refresh token
+    await client.post(
+        "/api/auth/signout",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    # Attempting refresh with the revoked token should fail
+    resp = await client.post("/api/auth/refresh", cookies={"aether_refresh": refresh_cookie})
+    assert resp.status_code == 401

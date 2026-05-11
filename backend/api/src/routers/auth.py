@@ -108,17 +108,13 @@ async def refresh(
         raise HTTPException(status_code=401, detail='No refresh token')
 
     now = datetime.now(timezone.utc)
-    rows = (await db.scalars(
+    token_hash = hash_refresh_token(aether_refresh)
+    matched = await db.scalar(
         select(RefreshToken)
+        .where(RefreshToken.token_hash == token_hash)
         .where(RefreshToken.revoked.is_(False))
         .where(RefreshToken.expires_at > now)
-    )).all()
-
-    matched: RefreshToken | None = None
-    for row in rows:
-        if verify_refresh_token_value(aether_refresh, row.token_hash):
-            matched = row
-            break
+    )
 
     if not matched:
         raise HTTPException(status_code=401, detail='Refresh token expired or revoked')
