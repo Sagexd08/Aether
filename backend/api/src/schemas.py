@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class OrmModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class SignUpRequest(BaseModel):
@@ -171,7 +171,7 @@ class AssetOut(OrmModel):
     width: int | None
     height: int | None
     duration_seconds: float | None
-    metadata_json: dict
+    metadata_json: dict = Field(serialization_alias='metadata')
     is_favorite: bool
     visibility: str
     status: str
@@ -195,9 +195,9 @@ class GenerationJobOut(OrmModel):
     last_error_code: str | None
     retry_count: int
     cancel_requested: bool
-    credits_cost: int | None
-    idempotency_key: str | None
-    metadata_json: dict
+    credits_cost: int | None = Field(default=None, serialization_alias='creditsCosted')
+    idempotency_key: str | None = None
+    metadata_json: dict = Field(serialization_alias='metadata')
     visibility: str
     preview_storage_key: str | None
     source_generation_job_id: str | None
