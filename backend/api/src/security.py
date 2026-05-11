@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import hmac
 import jwt
 import secrets
 from passlib.context import CryptContext
@@ -27,11 +29,12 @@ def create_refresh_token_value() -> str:
 
 
 def hash_refresh_token(token: str) -> str:
-    return pwd_context.hash(token)
+    # SHA-256 is appropriate for opaque bearer tokens (bcrypt is for passwords).
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def verify_refresh_token_value(token: str, token_hash: str) -> bool:
-    return pwd_context.verify(token, token_hash)
+    return hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(), token_hash)
 
 
 def create_access_token(subject: str) -> str:
