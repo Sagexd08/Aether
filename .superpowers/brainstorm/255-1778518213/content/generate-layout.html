@@ -1,0 +1,92 @@
+<h2>Sprint 2: Generation Studio Layout</h2>
+<p class="subtitle">How should the /generate page be structured? Each option uses the existing WorkspaceShell (nav rail + inspector panel). Only the main content area changes.</p>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0a0d18;border-radius:12px;font-family:monospace;font-size:11px;color:#a0aec0">
+      <div style="display:grid;grid-template-rows:auto 1fr;gap:8px;height:220px">
+        <!-- Command bar top -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:10px 12px">
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <span style="background:#fff;color:#000;border-radius:20px;padding:2px 10px;font-size:10px">text</span>
+            <span style="background:#ffffff10;border-radius:20px;padding:2px 10px;font-size:10px">image</span>
+            <span style="background:#ffffff10;border-radius:20px;padding:2px 10px;font-size:10px">video</span>
+            <span style="background:#ffffff10;border-radius:20px;padding:2px 10px;font-size:10px">audio</span>
+          </div>
+          <div style="background:#060810;border:1px solid #1a2035;border-radius:8px;padding:8px;height:50px;color:#ffffff50;font-size:10px">
+            Describe the scene…
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <span style="background:#fff;color:#000;border-radius:20px;padding:3px 12px;font-size:10px">✦ Generate</span>
+          </div>
+        </div>
+        <!-- Output below, full width -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:center;color:#ffffff30;font-size:10px">
+          Output stage — streaming text / image / video / audio renders here
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Stacked (command on top, output below)</h3>
+      <p>Classic prompt-to-output flow. Command bar always visible. Output area grows. Familiar to ChatGPT / Midjourney users. Simple, focused.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0a0d18;border-radius:12px;font-family:monospace;font-size:11px;color:#a0aec0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;height:220px">
+        <!-- Left: prompt + controls -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <span style="background:#fff;color:#000;border-radius:20px;padding:2px 8px;font-size:10px">text</span>
+            <span style="background:#ffffff10;border-radius:20px;padding:2px 8px;font-size:10px">image</span>
+            <span style="background:#ffffff10;border-radius:20px;padding:2px 8px;font-size:10px">video</span>
+          </div>
+          <div style="background:#060810;border:1px solid #1a2035;border-radius:8px;padding:6px;flex:1;color:#ffffff50;font-size:10px">Prompt…</div>
+          <div style="background:#060810;border:1px solid #1a2035;border-radius:8px;padding:6px;color:#ffffff30;font-size:10px">Enhance · Negative · Style</div>
+          <span style="background:#fff;color:#000;border-radius:20px;padding:3px 10px;font-size:10px;text-align:center">✦ Generate</span>
+        </div>
+        <!-- Right: output -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:center;color:#ffffff30;font-size:10px;text-align:center">
+          Output stage<br/>streaming / image<br/>video / audio
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Side-by-side (controls left, output right)</h3>
+      <p>Controls panel on the left, live output on the right. Both always visible simultaneously. Better for iterating — tweak settings while watching output. More like a professional studio tool.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:16px;background:#0a0d18;border-radius:12px;font-family:monospace;font-size:11px;color:#a0aec0">
+      <div style="display:grid;grid-template-rows:auto 1fr auto;gap:8px;height:220px">
+        <!-- Mode tabs top -->
+        <div style="display:flex;gap:6px">
+          <span style="background:#fff;color:#000;border-radius:20px;padding:3px 10px;font-size:10px">✦ Text</span>
+          <span style="background:#ffffff10;border-radius:20px;padding:3px 10px;font-size:10px">Image</span>
+          <span style="background:#ffffff10;border-radius:20px;padding:3px 10px;font-size:10px">Video</span>
+          <span style="background:#ffffff10;border-radius:20px;padding:3px 10px;font-size:10px">Audio</span>
+        </div>
+        <!-- Large output canvas in middle -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:center;color:#ffffff30;font-size:10px;text-align:center">
+          Output canvas — maximized, immersive<br/>streaming text fills this area
+        </div>
+        <!-- Prompt bar pinned at bottom -->
+        <div style="background:#0c0f1a;border:1px solid #1a2035;border-radius:10px;padding:8px;display:flex;align-items:center;gap:8px">
+          <div style="flex:1;background:#060810;border-radius:8px;padding:6px;color:#ffffff50;font-size:10px">Describe the scene…</div>
+          <span style="background:#fff;color:#000;border-radius:20px;padding:4px 12px;font-size:10px;white-space:nowrap">✦ Generate</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Canvas-first (output maximized, prompt pinned bottom)</h3>
+      <p>Output canvas dominates the screen. Prompt bar pinned at the bottom like a chat input. Mode tabs at top. Maximally cinematic — the output is the star. Prompt is secondary.</p>
+    </div>
+  </div>
+
+</div>

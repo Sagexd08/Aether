@@ -1,0 +1,40 @@
+<h2>Output Panel: what does each mode render?</h2>
+<p class="subtitle">The right panel in the side-by-side layout. Select all modes that should be in Sprint 2. Unselected modes will show a "coming soon" placeholder.</p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="text" onclick="toggleSelect(this)">
+    <div class="letter">T</div>
+    <div class="content">
+      <h3>Text — streaming tokens</h3>
+      <p>Real-time token-by-token streaming via SSE. Text appears word-by-word in a cinematic monospace or display font. Copy, expand, and regenerate controls. Backed by HuggingFace Router (SmolLM3-3B or configurable model).</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="image" onclick="toggleSelect(this)">
+    <div class="letter">I</div>
+    <div class="content">
+      <h3>Image — progressive reveal</h3>
+      <p>Single image generation via HF Inference API (FLUX.1-schnell). Loading shimmer while generating, then image fades in. Download, copy, save-to-gallery controls. Base64 → blob URL rendered in canvas.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="video" onclick="toggleSelect(this)">
+    <div class="letter">V</div>
+    <div class="content">
+      <h3>Video — player with controls</h3>
+      <p>Video generation via HF (Wan2.1-T2V-1.3B). Longer generation time (60–300s). Progress spinner with elapsed time. Output: HTML5 video player with autoplay, loop, download. Save to gallery.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="audio" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Audio — waveform player</h3>
+      <p>Audio generation via HF (musicgen-small). Animated waveform visualizer while generating. Output: audio player with waveform, play/pause, download. Save to gallery.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px">Select all that apply. Unselected modes get a polished "Coming in next sprint" state — not broken, just staged.</p>
