@@ -29,11 +29,17 @@ async def list_assets(
 @router.get('/notifications', response_model=list[NotificationResponse])
 async def list_notifications(
     workspace_id: str | None = None,
+    limit: int = Query(default=20, le=50),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[NotificationResponse]:
     workspace = await resolve_workspace(db, user, workspace_id)
-    rows = (await db.scalars(select(Notification).where(Notification.workspace_id == workspace.id).order_by(Notification.created_at.desc()))).all()
+    rows = (await db.scalars(
+        select(Notification)
+        .where(Notification.workspace_id == workspace.id)
+        .order_by(Notification.created_at.desc())
+        .limit(limit)
+    )).all()
     return [NotificationResponse.model_validate(row) for row in rows]
 
 

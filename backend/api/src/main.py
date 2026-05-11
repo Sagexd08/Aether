@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import time
+import uuid
 from collections import defaultdict, deque
 
 from fastapi import FastAPI, Request
@@ -20,6 +21,14 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title='AETHER AI API', lifespan=lifespan)
 settings = get_settings()
 _rate_buckets: dict[str, deque[float]] = defaultdict(deque)
+
+
+@app.middleware('http')
+async def request_id_middleware(request: Request, call_next):
+    request_id = request.headers.get('x-request-id') or str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers['x-request-id'] = request_id
+    return response
 
 
 @app.middleware('http')
