@@ -1,6 +1,7 @@
 // Prisma schema for AETHER AI
-// This schema mirrors the SQLAlchemy models in backend/api/src/models.py
-// Used for schema management / migrations only — runtime queries use SQLAlchemy.
+// Mirrors SQLAlchemy models in backend/api/src/models.py
+// All PKs are String (UUID v4) matching the Python backend.
+// Used for schema management only — runtime queries use SQLAlchemy.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,28 +13,28 @@ datasource db {
 }
 
 model User {
-  id                Int              @id @default(autoincrement())
-  email             String           @unique
-  name              String?
-  password_hash     String
-  credits_remaining Int              @default(0)
-  role              String           @default("user")
-  created_at        DateTime         @default(now())
+  id                String   @id @db.VarChar(36)
+  email             String   @unique @db.VarChar(255)
+  name              String   @db.VarChar(255)
+  password_hash     String   @db.VarChar(255)
+  credits_remaining Int      @default(1000)
+  role              String   @default("owner") @db.VarChar(40)
+  created_at        DateTime @default(now())
 
-  workspaces        Workspace[]
-  generations       Generation[]
-  audit_logs        AuditLog[]
-  refresh_tokens    RefreshToken[]
+  workspaces     Workspace[]
+  generations    Generation[]
+  audit_logs     AuditLog[]
+  refresh_tokens RefreshToken[]
 
   @@map("users")
 }
 
 model Workspace {
-  id         Int        @id @default(autoincrement())
-  owner_id   Int
-  name       String
-  plan       String     @default("free")
-  created_at DateTime   @default(now())
+  id         String   @id @db.VarChar(36)
+  owner_id   String   @db.VarChar(36)
+  name       String   @db.VarChar(255)
+  plan       String   @default("studio") @db.VarChar(40)
+  created_at DateTime @default(now())
 
   owner          User            @relation(fields: [owner_id], references: [id])
   projects       Project[]
@@ -47,11 +48,11 @@ model Workspace {
 }
 
 model Project {
-  id           Int      @id @default(autoincrement())
-  workspace_id Int
-  name         String
+  id           String   @id @db.VarChar(36)
+  workspace_id String   @db.VarChar(36)
+  name         String   @db.VarChar(255)
   description  String?
-  mode         String
+  mode         String   @default("multimodal") @db.VarChar(40)
   created_at   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspace_id], references: [id])
@@ -60,13 +61,13 @@ model Project {
 }
 
 model Generation {
-  id              Int      @id @default(autoincrement())
-  user_id         Int
-  mode            String
-  status          String   @default("pending")
+  id              String   @id @db.VarChar(36)
+  user_id         String   @db.VarChar(36)
+  mode            String   @db.VarChar(20)
+  status          String   @default("queued") @db.VarChar(20)
   prompt          String
   enhanced_prompt String?
-  model_used      String?
+  model_used      String?  @db.VarChar(255)
   output_url      String?
   output_text     String?
   credits_used    Int      @default(0)
@@ -79,13 +80,13 @@ model Generation {
 }
 
 model Asset {
-  id            Int      @id @default(autoincrement())
-  workspace_id  Int
-  generation_id Int?
-  kind          String
-  name          String
+  id            String   @id @db.VarChar(36)
+  workspace_id  String   @db.VarChar(36)
+  generation_id String?  @db.VarChar(36)
+  kind          String   @db.VarChar(40)
+  name          String   @db.VarChar(255)
   uri           String
-  metadata_json Json?
+  metadata_json Json     @default("{}")
   created_at    DateTime @default(now())
 
   workspace  Workspace   @relation(fields: [workspace_id], references: [id])
@@ -95,18 +96,18 @@ model Asset {
 }
 
 model Dataset {
-  id              Int      @id @default(autoincrement())
-  workspace_id    Int
-  source          String
-  source_ref      String?
-  name            String
-  status          String   @default("pending")
-  row_count       Int?
-  media_types     Json?
-  columns         Json?
-  quality_report  Json?
-  lineage         Json?
-  preview_samples Json?
+  id              String   @id @db.VarChar(36)
+  workspace_id    String   @db.VarChar(36)
+  source          String   @db.VarChar(40)
+  source_ref      String   @db.VarChar(512)
+  name            String   @db.VarChar(255)
+  status          String   @default("queued") @db.VarChar(40)
+  row_count       Int      @default(0)
+  media_types     Json     @default("[]")
+  columns         Json     @default("[]")
+  quality_report  Json     @default("{}")
+  lineage         Json     @default("{}")
+  preview_samples Json     @default("[]")
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
@@ -117,18 +118,18 @@ model Dataset {
 }
 
 model TrainingJob {
-  id                  Int      @id @default(autoincrement())
-  workspace_id        Int
-  dataset_id          Int
-  status              String   @default("pending")
-  task_type           String
-  base_model          String
-  adapter_method      String?
-  progress            Float    @default(0)
-  worker_status       String?
-  metrics             Json?
-  artifact_paths      Json?
-  checkpoint_versions Json?
+  id                  String   @id @db.VarChar(36)
+  workspace_id        String   @db.VarChar(36)
+  dataset_id          String   @db.VarChar(36)
+  status              String   @default("queued") @db.VarChar(40)
+  task_type           String   @db.VarChar(60)
+  base_model          String   @db.VarChar(255)
+  adapter_method      String   @default("lora") @db.VarChar(40)
+  progress            Int      @default(0)
+  worker_status       String   @default("waiting_for_worker") @db.VarChar(80)
+  metrics             Json     @default("{}")
+  artifact_paths      Json     @default("{}")
+  checkpoint_versions Json     @default("[]")
   error               String?
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
@@ -141,16 +142,16 @@ model TrainingJob {
 }
 
 model ModelRegistry {
-  id                Int      @id @default(autoincrement())
-  workspace_id      Int
-  training_job_id   Int?
-  name              String
-  version           String
-  base_model        String
+  id                String   @id @db.VarChar(36)
+  workspace_id      String   @db.VarChar(36)
+  training_job_id   String?  @db.VarChar(36)
+  name              String   @db.VarChar(255)
+  version           String   @db.VarChar(80)
+  base_model        String   @db.VarChar(255)
   artifact_uri      String
-  artifact_format   String?
-  metrics           Json?
-  deployment_status String   @default("inactive")
+  artifact_format   String   @db.VarChar(40)
+  metrics           Json     @default("{}")
+  deployment_status String   @default("staged") @db.VarChar(40)
   created_at        DateTime @default(now())
 
   workspace    Workspace    @relation(fields: [workspace_id], references: [id])
@@ -160,12 +161,12 @@ model ModelRegistry {
 }
 
 model AuditLog {
-  id            Int      @id @default(autoincrement())
-  user_id       Int?
-  action        String
-  target_type   String?
-  target_id     Int?
-  metadata_json Json?
+  id            String   @id @db.VarChar(36)
+  user_id       String?  @db.VarChar(36)
+  action        String   @db.VarChar(120)
+  target_type   String   @db.VarChar(80)
+  target_id     String?  @db.VarChar(80)
+  metadata_json Json     @default("{}")
   created_at    DateTime @default(now())
 
   user User? @relation(fields: [user_id], references: [id])
@@ -174,12 +175,12 @@ model AuditLog {
 }
 
 model Notification {
-  id           Int      @id @default(autoincrement())
-  workspace_id Int
-  kind         String
-  title        String
+  id           String   @id @db.VarChar(36)
+  workspace_id String   @db.VarChar(36)
+  kind         String   @db.VarChar(80)
+  title        String   @db.VarChar(255)
   body         String
-  status       String   @default("unread")
+  status       String   @default("unread") @db.VarChar(40)
   created_at   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspace_id], references: [id])
@@ -188,9 +189,9 @@ model Notification {
 }
 
 model RefreshToken {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  token_hash String   @unique
+  id         String   @id @db.VarChar(36)
+  user_id    String   @db.VarChar(36)
+  token_hash String   @db.VarChar(255)
   expires_at DateTime
   revoked    Boolean  @default(false)
   created_at DateTime @default(now())
