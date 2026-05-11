@@ -65,6 +65,7 @@ async def signup(payload: SignUpRequest, response: Response, db: AsyncSession = 
     workspace = Workspace(id=str(uuid4()), owner_id=user.id, name=f"{payload.name}'s Studio", plan='studio')
     db.add(user)
     db.add(workspace)
+    await db.flush()  # persist user + workspace so FK in audit_logs is satisfied
     await _issue_refresh_token(db, user.id, response)
     await audit(db, user.id, 'auth.signup', 'user', user.id)
     await db.commit()
