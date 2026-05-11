@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import jwt
+import secrets
 from passlib.context import CryptContext
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
@@ -19,6 +20,18 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, password_hash: str) -> bool:
     return pwd_context.verify(password, password_hash)
+
+
+def create_refresh_token_value() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    return pwd_context.hash(token)
+
+
+def verify_refresh_token_value(token: str, token_hash: str) -> bool:
+    return pwd_context.verify(token, token_hash)
 
 
 def create_access_token(subject: str) -> str:
