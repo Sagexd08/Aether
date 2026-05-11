@@ -1,5 +1,14 @@
 export type GenerationMode = 'text' | 'image' | 'video' | 'audio'
-export type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed'
+
+export type GenerationStatus =
+  | 'queued'
+  | 'preprocessing'
+  | 'running'
+  | 'postprocessing'
+  | 'persisting'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
 
 export interface User {
   id: string
@@ -7,20 +16,61 @@ export interface User {
   name: string
   avatarUrl?: string | null
   creditsRemaining: number
+  creditsReserved: number
   createdAt: string
 }
 
-export interface Generation {
+export interface GenerationJob {
   id: string
   userId: string
+  workspaceId: string
+  projectId: string | null
   mode: GenerationMode
-  status: GenerationStatus
   prompt: string
-  enhancedPrompt?: string | null
-  modelUsed?: string | null
-  outputUrl?: string | null
-  outputText?: string | null
-  creditsUsed: number
+  negativePrompt: string | null
+  model: string
+  provider: string
+  seed: number | null
+  status: GenerationStatus
+  progress: number
+  errorMessage: string | null
+  lastErrorCode: string | null
+  retryCount: number
+  cancelRequested: boolean
+  creditsCosted: number | null
+  idempotencyKey: string | null
+  inputAssetIds: string[] | null
+  metadata: Record<string, unknown>
+  visibility: 'private' | 'unlisted' | 'public'
+  previewStorageKey: string | null
+  sourceGenerationJobId: string | null
+  queueWaitMs: number | null
+  inferenceDurationMs: number | null
+  persistDurationMs: number | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string
+  updatedAt: string
+  assets: Asset[]
+}
+
+export interface Asset {
+  id: string
+  generationJobId: string
+  userId: string
+  workspaceId: string
+  generationIndex: number
+  type: 'image' | 'video' | 'audio'
+  storageKey: string
+  mimeType: string
+  fileSizeBytes: number | null
+  width: number | null
+  height: number | null
+  durationSeconds: number | null
+  metadata: Record<string, unknown>
+  isFavorite: boolean
+  visibility: 'private' | 'unlisted' | 'public'
+  status: 'pending' | 'ready' | 'failed'
   createdAt: string
 }
 
@@ -68,10 +118,27 @@ export type WSMessage =
   | { type: 'error'; code: string; message: string; ts: number }
   | { type: 'pong'; ts: number }
   | { type: 'workspace.presence'; userIds: string[]; ts: number }
-  | { type: 'generation.queued'; generationId: string; ts: number }
-  | { type: 'generation.progress'; generationId: string; progress: number; ts: number }
-  | { type: 'generation.completed'; generationId: string; outputUrl?: string; ts: number }
-  | { type: 'generation.failed'; generationId: string; error: string; ts: number }
+  | {
+      type: 'generation.progress'
+      jobId: string
+      workspaceId: string
+      ts: number
+      payload: { status: GenerationStatus; progress: number }
+    }
+  | {
+      type: 'generation.completed'
+      jobId: string
+      workspaceId: string
+      ts: number
+      payload: { job: GenerationJob; assets: Asset[] }
+    }
+  | {
+      type: 'generation.failed'
+      jobId: string
+      workspaceId: string
+      ts: number
+      payload: { error: string; errorCode: string | null }
+    }
   | { type: 'training.progress'; jobId: string; progress: number; workerStatus: string; ts: number }
   | { type: 'training.completed'; jobId: string; artifactPaths: Record<string, string>; ts: number }
   | { type: 'notification'; id: string; title: string; body: string; kind: string; ts: number }
