@@ -1,17 +1,21 @@
 import type { Metadata } from 'next'
-import './globals.css'
 import { AppProviders } from '@/components/providers/app-providers'
+import { ToastRegion } from '@/components/ui/toast'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'AETHER AI',
-  description: 'Cinematic multimodal generative AI operating system for creators.',
+  description: 'Multimodal creative operating system',
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          {children}
+        </AppProviders>
+        <ToastRegion />
       </body>
     </html>
   )
