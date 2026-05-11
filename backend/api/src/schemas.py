@@ -156,3 +156,93 @@ class Page(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AssetOut(OrmModel):
+    id: str
+    generation_job_id: str
+    user_id: str
+    workspace_id: str
+    generation_index: int
+    type: str
+    storage_key: str
+    mime_type: str
+    file_size_bytes: int | None
+    width: int | None
+    height: int | None
+    duration_seconds: float | None
+    metadata_json: dict
+    is_favorite: bool
+    visibility: str
+    status: str
+    created_at: datetime
+
+
+class GenerationJobOut(OrmModel):
+    id: str
+    user_id: str
+    workspace_id: str
+    project_id: str | None
+    mode: str
+    prompt: str
+    negative_prompt: str | None
+    model: str
+    provider: str
+    seed: int | None
+    status: str
+    progress: int
+    error_message: str | None
+    last_error_code: str | None
+    retry_count: int
+    cancel_requested: bool
+    credits_cost: int | None
+    idempotency_key: str | None
+    metadata_json: dict
+    visibility: str
+    preview_storage_key: str | None
+    source_generation_job_id: str | None
+    queue_wait_ms: int | None
+    inference_duration_ms: int | None
+    persist_duration_ms: int | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    assets: list[AssetOut] = []
+
+
+class ImageGenerateRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2000)
+    negative_prompt: str | None = Field(default=None, max_length=1000)
+    model: str = 'black-forest-labs/FLUX.1-schnell'
+    seed: int | None = None
+    metadata: dict = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, max_length=64)
+
+
+class AsyncGenerateRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2000)
+    negative_prompt: str | None = Field(default=None, max_length=1000)
+    model: str | None = None
+    seed: int | None = None
+    metadata: dict = Field(default_factory=dict)
+    idempotency_key: str | None = Field(default=None, max_length=64)
+
+
+class AsyncGenerateResponse(BaseModel):
+    job_id: str
+    status: str = 'queued'
+
+
+class ImageGenerateResponse(BaseModel):
+    job: GenerationJobOut
+    asset: AssetOut
+
+
+class JobsPageResponse(BaseModel):
+    jobs: list[GenerationJobOut]
+    next_cursor: str | None
+
+
+class FavoriteResponse(BaseModel):
+    is_favorite: bool
