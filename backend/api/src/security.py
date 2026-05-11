@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import jwt
 import secrets
-from passlib.context import CryptContext
+import bcrypt as _bcrypt_lib
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,16 +12,20 @@ from .db import get_db
 from .models import AuditLog, User
 from uuid import uuid4
 
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 settings = get_settings()
 
 
+def _pre_hash(password: str) -> bytes:
+    """Pre-hash with SHA-256 (hex digest) so bcrypt never sees > 72 bytes."""
+    return hashlib.sha256(password.encode()).hexdigest().encode()
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return _bcrypt_lib.hashpw(_pre_hash(password), _bcrypt_lib.gensalt()).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    return _bcrypt_lib.checkpw(_pre_hash(password), password_hash.encode())
 
 
 def create_refresh_token_value() -> str:
@@ -38,8 +42,13 @@ def verify_refresh_token_value(token: str, token_hash: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
-    expires = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_ttl_minutes)
-    return jwt.encode({'sub': subject, 'exp': expires}, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=settings.access_token_ttl_minutes)
+    return jwt.encode(
+        {'sub': subject, 'exp': expires, 'iat': now, 'jti': secrets.token_hex(8)},
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
+    )
 
 
 def decode_access_token(token: str) -> str:
