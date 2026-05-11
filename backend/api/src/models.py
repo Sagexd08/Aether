@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -47,7 +47,7 @@ class GenerationJob(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'), index=True)
-    project_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    project_id: Mapped[str | None] = mapped_column(ForeignKey('projects.id'), nullable=True, index=True)
     mode: Mapped[str] = mapped_column(String(20), index=True)
     prompt: Mapped[str] = mapped_column(Text)
     negative_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -62,11 +62,11 @@ class GenerationJob(Base):
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
     credits_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
-    input_asset_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    input_asset_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     visibility: Mapped[str] = mapped_column(String(20), default='private')
     preview_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source_generation_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    source_generation_job_id: Mapped[str | None] = mapped_column(ForeignKey('generation_jobs.id'), nullable=True)
     queue_wait_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     inference_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     persist_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -93,7 +93,7 @@ class Asset(Base):
     file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    duration_seconds: Mapped[float | None] = mapped_column(Integer, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
     visibility: Mapped[str] = mapped_column(String(20), default='private')
