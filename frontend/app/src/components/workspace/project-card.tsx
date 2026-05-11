@@ -19,16 +19,14 @@ export function ProjectCard({ project }: { project: Project }) {
 
   return (
     <article className="glass-panel group rounded-[26px] p-5 transition hover:border-white/15">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${MODE_COLORS[project.mode]}`}>
-            {project.mode}
-          </span>
-          <h3 className="mt-3 font-display text-xl text-white">{project.name}</h3>
-          {project.description && (
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/50">{project.description}</p>
-          )}
-        </div>
+      <div className="min-w-0">
+        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs ${MODE_COLORS[project.mode]}`}>
+          {project.mode}
+        </span>
+        <h3 className="mt-3 font-display text-xl text-white">{project.name}</h3>
+        {project.description && (
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/50">{project.description}</p>
+        )}
       </div>
       <div className="mt-4 flex items-center justify-between">
         <span className="text-xs text-white/35">{date}</span>
