@@ -1,0 +1,201 @@
+// Prisma schema for AETHER AI
+// This schema mirrors the SQLAlchemy models in backend/api/src/models.py
+// Used for schema management / migrations only — runtime queries use SQLAlchemy.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int              @id @default(autoincrement())
+  email             String           @unique
+  name              String?
+  password_hash     String
+  credits_remaining Int              @default(0)
+  role              String           @default("user")
+  created_at        DateTime         @default(now())
+
+  workspaces        Workspace[]
+  generations       Generation[]
+  audit_logs        AuditLog[]
+  refresh_tokens    RefreshToken[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id         Int        @id @default(autoincrement())
+  owner_id   Int
+  name       String
+  plan       String     @default("free")
+  created_at DateTime   @default(now())
+
+  owner          User            @relation(fields: [owner_id], references: [id])
+  projects       Project[]
+  assets         Asset[]
+  datasets       Dataset[]
+  training_jobs  TrainingJob[]
+  model_registry ModelRegistry[]
+  notifications  Notification[]
+
+  @@map("workspaces")
+}
+
+model Project {
+  id           Int      @id @default(autoincrement())
+  workspace_id Int
+  name         String
+  description  String?
+  mode         String
+  created_at   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id])
+
+  @@map("projects")
+}
+
+model Generation {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  mode            String
+  status          String   @default("pending")
+  prompt          String
+  enhanced_prompt String?
+  model_used      String?
+  output_url      String?
+  output_text     String?
+  credits_used    Int      @default(0)
+  created_at      DateTime @default(now())
+
+  user   User    @relation(fields: [user_id], references: [id])
+  assets Asset[]
+
+  @@map("generations")
+}
+
+model Asset {
+  id            Int      @id @default(autoincrement())
+  workspace_id  Int
+  generation_id Int?
+  kind          String
+  name          String
+  uri           String
+  metadata_json Json?
+  created_at    DateTime @default(now())
+
+  workspace  Workspace   @relation(fields: [workspace_id], references: [id])
+  generation Generation? @relation(fields: [generation_id], references: [id])
+
+  @@map("assets")
+}
+
+model Dataset {
+  id              Int      @id @default(autoincrement())
+  workspace_id    Int
+  source          String
+  source_ref      String?
+  name            String
+  status          String   @default("pending")
+  row_count       Int?
+  media_types     Json?
+  columns         Json?
+  quality_report  Json?
+  lineage         Json?
+  preview_samples Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspace_id], references: [id])
+  training_jobs TrainingJob[]
+
+  @@map("datasets")
+}
+
+model TrainingJob {
+  id                  Int      @id @default(autoincrement())
+  workspace_id        Int
+  dataset_id          Int
+  status              String   @default("pending")
+  task_type           String
+  base_model          String
+  adapter_method      String?
+  progress            Float    @default(0)
+  worker_status       String?
+  metrics             Json?
+  artifact_paths      Json?
+  checkpoint_versions Json?
+  error               String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspace_id], references: [id])
+  dataset        Dataset         @relation(fields: [dataset_id], references: [id])
+  model_registry ModelRegistry[]
+
+  @@map("training_jobs")
+}
+
+model ModelRegistry {
+  id                Int      @id @default(autoincrement())
+  workspace_id      Int
+  training_job_id   Int?
+  name              String
+  version           String
+  base_model        String
+  artifact_uri      String
+  artifact_format   String?
+  metrics           Json?
+  deployment_status String   @default("inactive")
+  created_at        DateTime @default(now())
+
+  workspace    Workspace    @relation(fields: [workspace_id], references: [id])
+  training_job TrainingJob? @relation(fields: [training_job_id], references: [id])
+
+  @@map("model_registry")
+}
+
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+  user_id       Int?
+  action        String
+  target_type   String?
+  target_id     Int?
+  metadata_json Json?
+  created_at    DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Notification {
+  id           Int      @id @default(autoincrement())
+  workspace_id Int
+  kind         String
+  title        String
+  body         String
+  status       String   @default("unread")
+  created_at   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspace_id], references: [id])
+
+  @@map("notifications")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  token_hash String   @unique
+  expires_at DateTime
+  revoked    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("refresh_tokens")
+}
