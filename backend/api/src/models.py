@@ -15,6 +15,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255))
     password_hash: Mapped[str] = mapped_column(String(255))
     credits_remaining: Mapped[int] = mapped_column(Integer, default=1000)
+    credits_reserved: Mapped[int] = mapped_column(Integer, default=0)
     role: Mapped[str] = mapped_column(String(40), default='owner')
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -40,33 +41,76 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-class Generation(Base):
-    __tablename__ = 'generations'
+class GenerationJob(Base):
+    __tablename__ = 'generation_jobs'
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'), index=True)
+    project_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     mode: Mapped[str] = mapped_column(String(20), index=True)
-    status: Mapped[str] = mapped_column(String(20), default='queued')
     prompt: Mapped[str] = mapped_column(Text)
-    enhanced_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
-    model_used: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    output_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    output_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    credits_used: Mapped[int] = mapped_column(Integer, default=0)
+    negative_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    model: Mapped[str] = mapped_column(String(100))
+    provider: Mapped[str] = mapped_column(String(50), default='huggingface')
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default='queued', index=True)
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    credits_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    input_asset_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    visibility: Mapped[str] = mapped_column(String(20), default='private')
+    preview_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_generation_job_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    queue_wait_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    inference_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    persist_duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    assets: Mapped[list['Asset']] = relationship('Asset', back_populates='job', lazy='selectin')
 
 
 class Asset(Base):
     __tablename__ = 'assets'
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    generation_job_id: Mapped[str] = mapped_column(ForeignKey('generation_jobs.id'), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
     workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'), index=True)
-    generation_id: Mapped[str | None] = mapped_column(ForeignKey('generations.id'), nullable=True, index=True)
-    kind: Mapped[str] = mapped_column(String(40))
-    name: Mapped[str] = mapped_column(String(255))
-    uri: Mapped[str] = mapped_column(Text)
+    generation_index: Mapped[int] = mapped_column(Integer, default=0)
+    type: Mapped[str] = mapped_column(String(20))
+    storage_key: Mapped[str] = mapped_column(Text)
+    mime_type: Mapped[str] = mapped_column(String(50))
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_seconds: Mapped[float | None] = mapped_column(Integer, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    visibility: Mapped[str] = mapped_column(String(20), default='private')
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped['GenerationJob'] = relationship('GenerationJob', back_populates='assets')
+
+
+class GenerationJobInput(Base):
+    __tablename__ = 'generation_job_inputs'
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    generation_job_id: Mapped[str] = mapped_column(ForeignKey('generation_jobs.id'), index=True)
+    asset_id: Mapped[str] = mapped_column(ForeignKey('assets.id'), index=True)
+    role: Mapped[str] = mapped_column(String(50))
 
 
 class Dataset(Base):
