@@ -114,7 +114,7 @@ export function WorkspaceDashboard() {
       <CreateProjectModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        onSubmit={(data) => createMutation.mutateAsync(data)}
+        onSubmit={(data) => createMutation.mutateAsync(data).then(() => undefined)}
         error={modalError}
       />
     </div>
