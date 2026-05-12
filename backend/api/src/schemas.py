@@ -90,6 +90,41 @@ class DatasetResponse(OrmModel):
     updated_at: datetime
 
 
+class DatasetOut(OrmModel):
+    id: str
+    workspace_id: str
+    source: str
+    source_ref: str
+    name: str
+    status: str
+    progress: int
+    row_count: int
+    sample_count: int
+    media_types: list[str]
+    columns: list[dict]
+    quality_report: dict
+    lineage: dict
+    preview_samples: list[dict]
+    ingestion_config: dict
+    error_message: str | None
+    last_error_code: str | None
+    deleted_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DatasetImportResponse(BaseModel):
+    dataset_id: str
+    status: str = 'queued'
+
+
+class DatasetPreviewResponse(BaseModel):
+    rows: list[dict]
+    total: int
+    offset: int
+    limit: int
+
+
 class TrainingJobCreate(BaseModel):
     dataset_id: str
     workspace_id: str | None = None
