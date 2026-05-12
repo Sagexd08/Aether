@@ -22,14 +22,15 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.542.0",
+    "nanoid": "^5.1.11",
     "next": "15.5.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-hook-form": "^7.62.0",
     "tailwind-merge": "^3.3.1",
     "three": "^0.179.1",
-    "zustand": "^5.0.8",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
