@@ -54,7 +54,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router, prefix='/api/auth', tags=['auth'])
 app.include_router(workspaces.router, prefix='/api/workspaces', tags=['workspaces'])
-app.include_router(generations.router, prefix='/api/generations', tags=['generations'])
+app.include_router(generations.router, prefix='/api/generation', tags=['generation'])
 app.include_router(datasets.router, prefix='/api/datasets', tags=['datasets'])
 app.include_router(training.router, prefix='/api/training', tags=['training'])
 app.include_router(registry.router, prefix='/api/models', tags=['models'])
