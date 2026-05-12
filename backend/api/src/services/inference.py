@@ -1,12 +1,12 @@
+import asyncio
 import base64
+import io
 import time
 from dataclasses import dataclass
-from typing import AsyncIterator, Protocol
+from typing import AsyncGenerator, AsyncIterator, Protocol
 
 from ..config import get_settings
 from ..models import GenerationJob
-
-settings = get_settings()
 
 CREDIT_COSTS: dict[str, int] = {'image': 10, 'video': 50, 'audio': 20, 'text': 5}
 DEFAULT_MODELS: dict[str, str] = {
@@ -31,16 +31,16 @@ class ProviderUpdate:
 
 
 class InferenceProvider(Protocol):
-    async def generate(self, job: GenerationJob) -> AsyncIterator[ProviderUpdate]: ...
+    async def generate(self, job: GenerationJob) -> AsyncGenerator[ProviderUpdate, None]: ...
 
 
 class HuggingFaceProvider:
     """Wraps HF InferenceClient. All HF-specific semantics stay inside this class."""
 
-    async def generate(self, job: GenerationJob) -> AsyncIterator[ProviderUpdate]:
+    async def generate(self, job: GenerationJob) -> AsyncGenerator[ProviderUpdate, None]:
         from huggingface_hub import InferenceClient
 
-        token = settings.huggingface_token
+        token = get_settings().huggingface_token
         client = InferenceClient(token=token)
         model = job.model or DEFAULT_MODELS.get(job.mode, '')
 
@@ -51,11 +51,12 @@ class HuggingFaceProvider:
         if job.mode == 'image':
             yield ProviderUpdate(status='running', progress=30)
             try:
-                image = client.text_to_image(
+                loop = asyncio.get_event_loop()
+                image = await loop.run_in_executor(None, lambda: client.text_to_image(
                     job.prompt,
                     model=model,
                     negative_prompt=job.negative_prompt,
-                )
+                ))
             except Exception as exc:
                 yield ProviderUpdate(
                     status='failed', progress=0,
@@ -66,7 +67,6 @@ class HuggingFaceProvider:
             inference_ms = int((time.time() - inference_start) * 1000)
 
             # Encode to base64 data URL (Sprint 2 dev — no object storage yet)
-            import io
             buf = io.BytesIO()
             image.save(buf, format='PNG')
             b64 = base64.b64encode(buf.getvalue()).decode()
@@ -84,7 +84,8 @@ class HuggingFaceProvider:
         elif job.mode == 'audio':
             yield ProviderUpdate(status='running', progress=30)
             try:
-                audio_bytes = client.text_to_speech(job.prompt, model=model)
+                loop = asyncio.get_event_loop()
+                audio_bytes = await loop.run_in_executor(None, lambda: client.text_to_speech(job.prompt, model=model))
             except Exception as exc:
                 yield ProviderUpdate(
                     status='failed', progress=0,
@@ -108,7 +109,6 @@ class HuggingFaceProvider:
             # HF video generation is long-running — simulate progress ticks
             # Real implementation would poll HF async task
             try:
-                import asyncio
                 for tick_progress in range(25, 80, 10):
                     await asyncio.sleep(5)
                     if job.cancel_requested:
@@ -116,7 +116,8 @@ class HuggingFaceProvider:
                         return
                     yield ProviderUpdate(status='running', progress=tick_progress)
 
-                video_bytes = client.text_to_video(job.prompt, model=model)
+                loop = asyncio.get_event_loop()
+                video_bytes = await loop.run_in_executor(None, lambda: client.text_to_video(job.prompt, model=model))
             except Exception as exc:
                 yield ProviderUpdate(
                     status='failed', progress=0,
