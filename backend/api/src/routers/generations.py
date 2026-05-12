@@ -1,6 +1,6 @@
 import asyncio
-import time
-from uuid import uuid4
+import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import select
@@ -19,7 +19,28 @@ from ..services.generation import create_job, run_job
 
 router = APIRouter()
 
+_log = logging.getLogger(__name__)
+
+_background_tasks: set[asyncio.Task] = set()
+
 INFLIGHT = {'queued', 'preprocessing', 'running', 'postprocessing', 'persisting'}
+
+
+async def _run_job_background(user_id: str, job_id: str) -> None:
+    """Run a generation job in a background session. Called via asyncio.create_task."""
+    from ..db import SessionLocal
+    async with SessionLocal() as bg_db:
+        bg_user = await bg_db.get(User, user_id)
+        bg_job = await bg_db.get(GenerationJob, job_id)
+        if not bg_user or not bg_job:
+            return
+        redis = await _get_redis()
+        try:
+            await run_job(bg_db, redis, bg_job, bg_user)
+        except Exception:
+            _log.exception('Background generation job %s failed', job_id)
+        finally:
+            await redis.aclose()
 
 
 def _assert_workspace_access(job: GenerationJob, user: User) -> None:
@@ -105,21 +126,16 @@ async def generate_video(
     except ValueError:
         raise HTTPException(status_code=402, detail='Insufficient credits')
 
+    await audit(db, user.id, 'generation.video', 'generation_job', job.id, {'mode': 'video'})
     await db.commit()
 
-    async def _bg():
-        from ..db import SessionLocal
-        async with SessionLocal() as bg_db:
-            bg_user = await bg_db.get(User, user.id)
-            bg_job = await bg_db.get(GenerationJob, job.id)
-            redis = await _get_redis()
-            try:
-                await run_job(bg_db, redis, bg_job, bg_user)
-            finally:
-                await redis.aclose()
+    # Only spawn background task for newly queued jobs
+    if job.status == 'queued':
+        task = asyncio.create_task(_run_job_background(user.id, job.id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
-    asyncio.create_task(_bg())
-    return AsyncGenerateResponse(job_id=job.id, status='queued')
+    return AsyncGenerateResponse(job_id=job.id, status=job.status)
 
 
 @router.post('/audio', response_model=AsyncGenerateResponse, status_code=202)
@@ -144,21 +160,16 @@ async def generate_audio(
     except ValueError:
         raise HTTPException(status_code=402, detail='Insufficient credits')
 
+    await audit(db, user.id, 'generation.audio', 'generation_job', job.id, {'mode': 'audio'})
     await db.commit()
 
-    async def _bg():
-        from ..db import SessionLocal
-        async with SessionLocal() as bg_db:
-            bg_user = await bg_db.get(User, user.id)
-            bg_job = await bg_db.get(GenerationJob, job.id)
-            redis = await _get_redis()
-            try:
-                await run_job(bg_db, redis, bg_job, bg_user)
-            finally:
-                await redis.aclose()
+    # Only spawn background task for newly queued jobs
+    if job.status == 'queued':
+        task = asyncio.create_task(_run_job_background(user.id, job.id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
-    asyncio.create_task(_bg())
-    return AsyncGenerateResponse(job_id=job.id, status='queued')
+    return AsyncGenerateResponse(job_id=job.id, status=job.status)
 
 
 @router.get('/jobs', response_model=JobsPageResponse)
@@ -181,7 +192,6 @@ async def list_jobs(
         .where(GenerationJob.workspace_id == workspace_id)
         .where(GenerationJob.deleted_at.is_(None))
         .order_by(GenerationJob.created_at.desc(), GenerationJob.id.desc())
-        .limit(limit + 1)
     )
     if mode:
         stmt = stmt.where(GenerationJob.mode == mode)
@@ -192,9 +202,8 @@ async def list_jobs(
         # cursor = "created_at_iso|id"
         parts = cursor.split('|', 1)
         if len(parts) == 2:
-            from datetime import datetime as dt
             try:
-                cur_ts = dt.fromisoformat(parts[0])
+                cur_ts = datetime.fromisoformat(parts[0])
                 cur_id = parts[1]
                 stmt = stmt.where(
                     (GenerationJob.created_at < cur_ts) |
@@ -202,6 +211,7 @@ async def list_jobs(
                 )
             except ValueError:
                 pass
+    stmt = stmt.limit(limit + 1)
 
     rows = (await db.scalars(stmt)).all()
     has_more = len(rows) > limit
@@ -245,10 +255,9 @@ async def delete_job(
     if job.status in INFLIGHT:
         job.cancel_requested = True
     else:
-        from datetime import datetime
-        job.deleted_at = datetime.utcnow()
+        job.deleted_at = datetime.now(tz=timezone.utc)
         for asset in job.assets:
-            asset.deleted_at = datetime.utcnow()
+            asset.deleted_at = datetime.now(tz=timezone.utc)
 
     await db.commit()
 
