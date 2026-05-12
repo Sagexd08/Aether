@@ -19,6 +19,7 @@ interface RawAuthResponse {
     email: string
     name: string
     credits_remaining: number
+    credits_reserved: number
     role: string
     workspace_id: string | null
   }
@@ -37,6 +38,7 @@ export async function signUp(payload: SignUpPayload): Promise<{ token: string; u
       email: data.user.email,
       name: data.user.name,
       creditsRemaining: data.user.credits_remaining,
+      creditsReserved: data.user.credits_reserved ?? 0,
       createdAt: new Date().toISOString(),
       workspaceId: data.user.workspace_id ?? '',
     },
@@ -56,6 +58,7 @@ export async function signIn(payload: SignInPayload): Promise<{ token: string; u
       email: data.user.email,
       name: data.user.name,
       creditsRemaining: data.user.credits_remaining,
+      creditsReserved: data.user.credits_reserved ?? 0,
       createdAt: new Date().toISOString(),
       workspaceId: data.user.workspace_id ?? '',
     },
@@ -69,6 +72,7 @@ export async function getMe(): Promise<UserWithWorkspace> {
     email: data.email,
     name: data.name,
     creditsRemaining: data.credits_remaining,
+    creditsReserved: (data as RawAuthResponse['user']).credits_reserved ?? 0,
     createdAt: new Date().toISOString(),
     workspaceId: data.workspace_id ?? '',
   }
