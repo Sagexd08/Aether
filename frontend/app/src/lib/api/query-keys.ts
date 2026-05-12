@@ -3,7 +3,10 @@ export const QK = {
   workspaces: () => ['workspaces'] as const,
   projects: (workspaceId: string) => ['projects', workspaceId] as const,
   notifications: (workspaceId: string) => ['notifications', workspaceId] as const,
-  generations: (workspaceId: string) => ['generations', workspaceId] as const,
+  generations: (workspaceId: string, mode?: string) =>
+    mode ? (['generations', workspaceId, mode] as const) : (['generations', workspaceId] as const),
+  generationJob: (jobId: string) => ['generation-job', jobId] as const,
+  generationJobsInflight: (workspaceId: string) => ['generations-inflight', workspaceId] as const,
   datasets: (workspaceId: string) => ['datasets', workspaceId] as const,
   trainingJobs: (workspaceId: string) => ['training-jobs', workspaceId] as const,
   models: (workspaceId: string) => ['models', workspaceId] as const,
