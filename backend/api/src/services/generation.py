@@ -12,17 +12,6 @@ from .inference import HuggingFaceProvider, CREDIT_COSTS, DEFAULT_MODELS, Provid
 
 _provider = HuggingFaceProvider()
 
-PROGRESS_FOR_STATUS: dict[str, int] = {
-    'queued': 0,
-    'preprocessing': 10,
-    'running': 30,
-    'postprocessing': 90,
-    'persisting': 95,
-    'completed': 100,
-    'failed': 0,
-    'cancelled': 0,
-}
-
 
 async def _publish(redis, workspace_id: str, event: dict) -> None:
     await redis.publish(f'ws:workspace:{workspace_id}', json.dumps(event))
@@ -48,13 +37,15 @@ async def _transition(
     if status == 'running' and job.started_at is None:
         job.started_at = datetime.utcnow()
     await db.flush()
-    await _publish(redis, job.workspace_id, {
-        'type': 'generation.progress',
-        'jobId': job.id,
-        'workspaceId': job.workspace_id,
-        'ts': int(time.time() * 1000),
-        'payload': {'status': status, 'progress': progress},
-    })
+    # Don't publish progress events for terminal states — they have dedicated event types
+    if status not in ('completed', 'failed', 'cancelled'):
+        await _publish(redis, job.workspace_id, {
+            'type': 'generation.progress',
+            'jobId': job.id,
+            'workspaceId': job.workspace_id,
+            'ts': int(time.time() * 1000),
+            'payload': {'status': status, 'progress': progress},
+        })
 
 
 async def create_job(
@@ -79,6 +70,8 @@ async def create_job(
         if existing:
             return existing
 
+    # Refresh user from DB to get current credit state (reduces but doesn't eliminate race)
+    await db.refresh(user)
     cost = CREDIT_COSTS.get(mode, 10)
     available = user.credits_remaining - user.credits_reserved
     if available < cost:
@@ -204,12 +197,15 @@ async def run_job(
             await _transition(db, redis, job, update.status, update.progress)
 
     except Exception as exc:
-        await _transition(
-            db, redis, job, 'failed', job.progress,
-            error_message=str(exc), error_code='internal_error',
-        )
-        user.credits_reserved -= (job.credits_cost or 0)
-        await db.commit()
+        try:
+            await _transition(
+                db, redis, job, 'failed', job.progress,
+                error_message=str(exc), error_code='internal_error',
+            )
+            user.credits_reserved -= (job.credits_cost or 0)
+            await db.commit()
+        except Exception:
+            pass  # best-effort cleanup; don't mask the original exception
         raise
 
     return None
