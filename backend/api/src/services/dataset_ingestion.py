@@ -13,7 +13,12 @@ from ..models import Dataset
 
 _log = logging.getLogger(__name__)
 
-_background_tasks: set[asyncio.Task] = set()
+try:
+    import langdetect as _langdetect
+    _LANGDETECT_AVAILABLE = True
+except ImportError:
+    _langdetect = None  # type: ignore[assignment]
+    _LANGDETECT_AVAILABLE = False
 
 
 def compute_quality_signals(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -60,13 +65,14 @@ def compute_quality_signals(rows: list[dict[str, Any]]) -> dict[str, Any]:
             str(row[text_col]) for row in rows[:10] if row.get(text_col)
         )
         if sample_text.strip():
-            try:
-                import langdetect
-                lang = langdetect.detect(sample_text)
-                language = lang
-                language_confidence = 0.9
-            except Exception:
-                pass
+            if _LANGDETECT_AVAILABLE and _langdetect is not None:
+                try:
+                    langs = _langdetect.detect_langs(sample_text)
+                    if langs:
+                        language = langs[0].lang
+                        language_confidence = round(langs[0].prob, 4)
+                except Exception:
+                    pass
 
     return {
         'null_rates': null_rates,
@@ -113,11 +119,12 @@ async def _transition(
 async def run_ingestion(db: AsyncSession, redis: Any, dataset: Dataset) -> None:
     """Drive dataset through full ingestion lifecycle."""
     try:
-        # Stage 1: Inspect
-        await _transition(db, redis, dataset, 'inspecting', 20)
-
+        # Guard: bail immediately if already soft-deleted
         if dataset.deleted_at is not None:
             return
+
+        # Stage 1: Inspect
+        await _transition(db, redis, dataset, 'inspecting', 20)
 
         if dataset.source == 'huggingface':
             result: ConnectorResult = await inspect_huggingface_dataset(dataset.source_ref)
