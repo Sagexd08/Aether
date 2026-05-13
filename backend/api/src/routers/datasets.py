@@ -55,9 +55,9 @@ async def import_dataset(
         row_count=inspection.row_count,
         media_types=inspection.media_types,
         columns=inspection.columns,
-        quality_report=inspection.quality_report,
-        lineage=inspection.lineage,
-        preview_samples=inspection.preview_samples,
+        quality_report={},
+        lineage={'source': payload.source, 'source_ref': payload.source_ref, **inspection.lineage_extra},
+        preview_samples=inspection.sample_rows[:50],
     )
     db.add(dataset)
     await audit(db, user.id, 'dataset.import', 'dataset', dataset.id, {'source': payload.source})
