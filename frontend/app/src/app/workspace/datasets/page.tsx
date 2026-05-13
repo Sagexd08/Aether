@@ -14,7 +14,7 @@ export default function DatasetsPage() {
   useDatasetReconcile(workspaceId, lastEvent)
 
   return (
-    <WorkspaceShell title="Datasets" subtitle="Upload training sets, import from Hugging Face or Kaggle, and manage fine-tune preparation flows.">
+    <WorkspaceShell title="Datasets" subtitle="Import and inspect training datasets">
       <div className="p-6">
         {workspaceId ? (
           <DatasetConsole workspaceId={workspaceId} />
