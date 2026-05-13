@@ -1,5 +1,5 @@
-import { HeroShell } from '@/components/marketing/hero-shell'
+import { redirect } from 'next/navigation'
 
 export default function HomePage() {
-  return <HeroShell />
+  redirect('/workspace')
 }

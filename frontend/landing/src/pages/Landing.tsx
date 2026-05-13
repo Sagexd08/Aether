@@ -90,7 +90,7 @@ export default function Landing() {
           </ul>
 
           <button
-            onClick={() => {}}
+            onClick={() => { window.location.href = 'http://localhost:3000' }}
             className="rounded-full px-6 py-2.5 text-sm font-medium text-white transition-transform duration-200 hover:scale-[1.03]"
             style={{ backgroundColor: '#000000', fontFamily: "'Inter', sans-serif" }}
           >
@@ -137,7 +137,7 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0.4 }}
-          onClick={() => {}}
+          onClick={() => { window.location.href = 'http://localhost:3000' }}
           className="mt-12 rounded-full px-14 py-5 text-base font-medium text-white transition-transform duration-200 hover:scale-[1.03]"
           style={{ backgroundColor: '#000000', fontFamily: "'Inter', sans-serif" }}
         >
