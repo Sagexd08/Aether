@@ -74,6 +74,51 @@ export interface Asset {
   createdAt: string
 }
 
+export type DatasetStatus =
+  | 'queued'
+  | 'inspecting'
+  | 'analyzing'
+  | 'previewing'
+  | 'completed'
+  | 'failed'
+
+export interface DatasetColumn {
+  name: string
+  dtype: string
+  nullable: boolean
+}
+
+export interface DatasetQualityReport {
+  null_rates: Record<string, number>
+  duplicate_estimate: number
+  media_types_detected: string[]
+  language: string
+  language_confidence: number
+  row_count_verified: number
+  sample_count: number
+}
+
+export interface Dataset {
+  id: string
+  workspaceId: string
+  source: 'huggingface' | 'kaggle' | 'local'
+  sourceRef: string
+  name: string
+  status: DatasetStatus
+  progress: number
+  rowCount: number
+  sampleCount: number
+  mediaTypes: string[]
+  columns: DatasetColumn[]
+  qualityReport: DatasetQualityReport | null
+  previewSamples: Record<string, unknown>[]
+  lineage: Record<string, unknown>
+  ingestionConfig: Record<string, unknown>
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface NotificationItem {
   id: string
   title: string
@@ -142,6 +187,27 @@ export type WSMessage =
   | { type: 'training.progress'; jobId: string; progress: number; workerStatus: string; ts: number }
   | { type: 'training.completed'; jobId: string; artifactPaths: Record<string, string>; ts: number }
   | { type: 'notification'; id: string; title: string; body: string; kind: string; ts: number }
+  | {
+      type: 'dataset.progress'
+      datasetId: string
+      workspaceId: string
+      ts: number
+      payload: { status: DatasetStatus; progress: number }
+    }
+  | {
+      type: 'dataset.completed'
+      datasetId: string
+      workspaceId: string
+      ts: number
+      payload: { dataset: Dataset }
+    }
+  | {
+      type: 'dataset.failed'
+      datasetId: string
+      workspaceId: string
+      ts: number
+      payload: { error: string; errorCode: string | null }
+    }
 
 // Client → Server WebSocket messages
 export type WSClientMessage =
