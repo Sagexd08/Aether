@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+@import './styles/fonts.css';
+@import './styles/theme.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+}
