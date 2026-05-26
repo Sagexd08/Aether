@@ -117,6 +117,6 @@ export function useSessionWebSocket() {
   return { status, lastEvent, send }
 }
 
-export function useWorkspaceWebSocket() {
+export function useWorkspaceWebSocket(_workspaceId?: string) {
   return useSessionWebSocket()
 }
