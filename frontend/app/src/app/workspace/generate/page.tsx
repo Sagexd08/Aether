@@ -29,7 +29,7 @@ export default function GeneratePage() {
 
             {/* Right: output */}
             <div className="bg-[#0c0f1a] border border-white/10 rounded-2xl p-5">
-              <OutputPanel />
+              <OutputPanel mode="" />
             </div>
           </div>
 
