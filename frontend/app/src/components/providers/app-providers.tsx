@@ -2,13 +2,13 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { useAuthStore } from '@/lib/store/auth'
+import { useSessionStore } from '@/lib/store/session'
 
-function AuthHydrator() {
-  const hydrate = useAuthStore((s) => s.hydrate)
+function SessionHydrator() {
+  const createSession = useSessionStore((s) => s.createSession)
   useEffect(() => {
-    void hydrate()
-  }, [hydrate])
+    void createSession()
+  }, [createSession])
   return null
 }
 
@@ -27,7 +27,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthHydrator />
+      <SessionHydrator />
       {children}
     </QueryClientProvider>
   )

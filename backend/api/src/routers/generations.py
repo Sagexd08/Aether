@@ -7,14 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_db
-from ..models import Asset, GenerationJob, User, Workspace
+from ..models import Asset, GenerationJob
 from ..realtime import _get_redis
 from ..schemas import (
     AsyncGenerateRequest, AsyncGenerateResponse,
     FavoriteResponse, GenerationJobOut, ImageGenerateRequest,
     ImageGenerateResponse, JobsPageResponse,
 )
-from ..security import audit, get_current_user
+from ..routers.session import get_session_from_id, GENERATION_LIMIT
 from ..services.generation import create_job, run_job
 
 router = APIRouter()
@@ -26,58 +26,51 @@ _background_tasks: set[asyncio.Task] = set()
 INFLIGHT = {'queued', 'preprocessing', 'running', 'postprocessing', 'persisting'}
 
 
-async def _run_job_background(user_id: str, job_id: str) -> None:
+async def _run_job_background(session_id: str, job_id: str) -> None:
     """Run a generation job in a background session. Called via asyncio.create_task."""
     from ..db import SessionLocal
     async with SessionLocal() as bg_db:
-        bg_user = await bg_db.get(User, user_id)
+        bg_session = await get_session_from_id(session_id, bg_db)
         bg_job = await bg_db.get(GenerationJob, job_id)
-        if not bg_user or not bg_job:
+        if not bg_session or not bg_job:
             return
         redis = await _get_redis()
         try:
-            await run_job(bg_db, redis, bg_job, bg_user)
+            await run_job(bg_db, redis, bg_job, bg_session)
         except Exception:
             _log.exception('Background generation job %s failed', job_id)
         finally:
             await redis.aclose()
 
 
-def _assert_workspace_access(job: GenerationJob, user: User) -> None:
-    if job.user_id != user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-
-
-async def _get_workspace_id(db: AsyncSession, user: User) -> str:
-    ws = await db.scalar(select(Workspace).where(Workspace.owner_id == user.id))
-    if not ws:
-        raise HTTPException(status_code=404, detail='Workspace not found')
-    return ws.id
-
-
 @router.post('/image', response_model=ImageGenerateResponse, status_code=200)
 async def generate_image(
     payload: ImageGenerateRequest,
+    session_id: str = Header(..., alias='X-Session-Id'),
     idempotency_key: str | None = Header(default=None, alias='Idempotency-Key'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> ImageGenerateResponse:
-    workspace_id = await _get_workspace_id(db, user)
+    session = await get_session_from_id(session_id, db)
+    
+    if session.generations_used >= GENERATION_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                'error': 'generation_limit_reached',
+                'remaining': 0
+            }
+        )
+
     ik = payload.idempotency_key or idempotency_key
 
-    try:
-        job = await create_job(
-            db, user, workspace_id, 'image', payload.prompt,
-            negative_prompt=payload.negative_prompt,
-            model=payload.model,
-            seed=payload.seed,
-            metadata=payload.metadata,
-            idempotency_key=ik,
-        )
-    except ValueError as exc:
-        if 'insufficient' in str(exc):
-            raise HTTPException(status_code=402, detail='Insufficient credits')
-        raise
+    job = await create_job(
+        db, session, 'image', payload.prompt,
+        negative_prompt=payload.negative_prompt,
+        model=payload.model,
+        seed=payload.seed,
+        metadata=payload.metadata,
+        idempotency_key=ik,
+    )
 
     # Check idempotency — job already completed
     if job.status == 'completed' and job.assets:
@@ -88,14 +81,13 @@ async def generate_image(
 
     redis = await _get_redis()
     try:
-        asset = await run_job(db, redis, job, user)
+        asset = await run_job(db, redis, job, session)
     finally:
         await redis.aclose()
 
     if not asset:
         raise HTTPException(status_code=502, detail=job.error_message or 'Generation failed')
 
-    await audit(db, user.id, 'generation.image', 'generation_job', job.id, {'mode': 'image'})
     await db.commit()
 
     return ImageGenerateResponse(
@@ -107,31 +99,37 @@ async def generate_image(
 @router.post('/video', response_model=AsyncGenerateResponse, status_code=202)
 async def generate_video(
     payload: AsyncGenerateRequest,
+    session_id: str = Header(..., alias='X-Session-Id'),
     idempotency_key: str | None = Header(default=None, alias='Idempotency-Key'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> AsyncGenerateResponse:
-    workspace_id = await _get_workspace_id(db, user)
+    session = await get_session_from_id(session_id, db)
+    
+    if session.generations_used >= GENERATION_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                'error': 'generation_limit_reached',
+                'remaining': 0
+            }
+        )
+
     ik = payload.idempotency_key or idempotency_key
 
-    try:
-        job = await create_job(
-            db, user, workspace_id, 'video', payload.prompt,
-            negative_prompt=payload.negative_prompt,
-            model=payload.model or 'Wan-AI/Wan2.1-T2V-1.3B',
-            seed=payload.seed,
-            metadata=payload.metadata,
-            idempotency_key=ik,
-        )
-    except ValueError:
-        raise HTTPException(status_code=402, detail='Insufficient credits')
+    job = await create_job(
+        db, session, 'video', payload.prompt,
+        negative_prompt=payload.negative_prompt,
+        model=payload.model or 'Wan-AI/Wan2.1-T2V-1.3B',
+        seed=payload.seed,
+        metadata=payload.metadata,
+        idempotency_key=ik,
+    )
 
-    await audit(db, user.id, 'generation.video', 'generation_job', job.id, {'mode': 'video'})
     await db.commit()
 
     # Only spawn background task for newly queued jobs
     if job.status == 'queued':
-        task = asyncio.create_task(_run_job_background(user.id, job.id))
+        task = asyncio.create_task(_run_job_background(session.session_id, job.id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
 
@@ -141,31 +139,37 @@ async def generate_video(
 @router.post('/audio', response_model=AsyncGenerateResponse, status_code=202)
 async def generate_audio(
     payload: AsyncGenerateRequest,
+    session_id: str = Header(..., alias='X-Session-Id'),
     idempotency_key: str | None = Header(default=None, alias='Idempotency-Key'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> AsyncGenerateResponse:
-    workspace_id = await _get_workspace_id(db, user)
+    session = await get_session_from_id(session_id, db)
+    
+    if session.generations_used >= GENERATION_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                'error': 'generation_limit_reached',
+                'remaining': 0
+            }
+        )
+
     ik = payload.idempotency_key or idempotency_key
 
-    try:
-        job = await create_job(
-            db, user, workspace_id, 'audio', payload.prompt,
-            negative_prompt=payload.negative_prompt,
-            model=payload.model or 'facebook/musicgen-small',
-            seed=payload.seed,
-            metadata=payload.metadata,
-            idempotency_key=ik,
-        )
-    except ValueError:
-        raise HTTPException(status_code=402, detail='Insufficient credits')
+    job = await create_job(
+        db, session, 'audio', payload.prompt,
+        negative_prompt=payload.negative_prompt,
+        model=payload.model or 'facebook/musicgen-small',
+        seed=payload.seed,
+        metadata=payload.metadata,
+        idempotency_key=ik,
+    )
 
-    await audit(db, user.id, 'generation.audio', 'generation_job', job.id, {'mode': 'audio'})
     await db.commit()
 
     # Only spawn background task for newly queued jobs
     if job.status == 'queued':
-        task = asyncio.create_task(_run_job_background(user.id, job.id))
+        task = asyncio.create_task(_run_job_background(session.session_id, job.id))
         _background_tasks.add(task)
         task.add_done_callback(_background_tasks.discard)
 
@@ -174,22 +178,18 @@ async def generate_audio(
 
 @router.get('/jobs', response_model=JobsPageResponse)
 async def list_jobs(
-    workspace_id: str = Query(...),
+    session_id: str = Header(..., alias='X-Session-Id'),
     mode: str | None = Query(default=None),
     status: str | None = Query(default=None),
     cursor: str | None = Query(default=None),
     limit: int = Query(default=20, le=100),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> JobsPageResponse:
-    # Verify workspace ownership
-    ws = await db.get(Workspace, workspace_id)
-    if not ws or ws.owner_id != user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
+    session = await get_session_from_id(session_id, db)
 
     stmt = (
         select(GenerationJob)
-        .where(GenerationJob.workspace_id == workspace_id)
+        .where(GenerationJob.session_id == session.session_id)
         .where(GenerationJob.deleted_at.is_(None))
         .order_by(GenerationJob.created_at.desc(), GenerationJob.id.desc())
     )
@@ -231,26 +231,26 @@ async def list_jobs(
 @router.get('/jobs/{job_id}', response_model=GenerationJobOut)
 async def get_job(
     job_id: str,
+    session_id: str = Header(..., alias='X-Session-Id'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> GenerationJobOut:
+    session = await get_session_from_id(session_id, db)
     job = await db.get(GenerationJob, job_id)
-    if not job or job.deleted_at is not None:
+    if not job or job.deleted_at is not None or job.session_id != session.session_id:
         raise HTTPException(status_code=404, detail='Job not found')
-    _assert_workspace_access(job, user)
     return GenerationJobOut.model_validate(job)
 
 
 @router.delete('/jobs/{job_id}', status_code=204)
 async def delete_job(
     job_id: str,
+    session_id: str = Header(..., alias='X-Session-Id'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> None:
+    session = await get_session_from_id(session_id, db)
     job = await db.get(GenerationJob, job_id)
-    if not job or job.deleted_at is not None:
+    if not job or job.deleted_at is not None or job.session_id != session.session_id:
         raise HTTPException(status_code=404, detail='Job not found')
-    _assert_workspace_access(job, user)
 
     if job.status in INFLIGHT:
         job.cancel_requested = True
@@ -265,14 +265,13 @@ async def delete_job(
 @router.patch('/assets/{asset_id}/favorite', response_model=FavoriteResponse)
 async def toggle_favorite(
     asset_id: str,
+    session_id: str = Header(..., alias='X-Session-Id'),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
 ) -> FavoriteResponse:
+    session = await get_session_from_id(session_id, db)
     asset = await db.get(Asset, asset_id)
-    if not asset or asset.deleted_at is not None:
+    if not asset or asset.deleted_at is not None or asset.session_id != session.session_id:
         raise HTTPException(status_code=404, detail='Asset not found')
-    if asset.user_id != user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
     asset.is_favorite = not asset.is_favorite
     await db.commit()
     return FavoriteResponse(is_favorite=asset.is_favorite)

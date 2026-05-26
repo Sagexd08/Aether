@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Download, Heart, Loader2 } from 'lucide-react'
 import type { ActiveGenerationState } from '@/lib/store/generation'
 import { patchFavorite } from '@/lib/api/generation'
+import { useSessionStore } from '@/lib/store/session'
 
 interface Props {
   job: ActiveGenerationState
@@ -12,6 +13,7 @@ interface Props {
 
 export function ImageOutput({ job }: Props) {
   const asset = job.assets[0]
+  const sessionStore = useSessionStore()
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [retries, setRetries] = useState(0)
@@ -34,9 +36,10 @@ export function ImageOutput({ job }: Props) {
   }
 
   const handleFavorite = async () => {
+    if (!sessionStore.sessionId) return
     setIsFavorite((v) => !v)
     try {
-      const res = await patchFavorite(asset.id)
+      const res = await patchFavorite(asset.id, sessionStore.sessionId)
       setIsFavorite(res.is_favorite)
     } catch {
       setIsFavorite((v) => !v)

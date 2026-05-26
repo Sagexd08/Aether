@@ -70,7 +70,7 @@ export function WorkspaceShell({
 
   async function handleSignOut() {
     await signOut()
-    router.push('/signin')
+    router.push('/')
   }
 
   return (

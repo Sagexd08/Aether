@@ -5,6 +5,7 @@ import { Download, Heart, RefreshCw, X } from 'lucide-react'
 import { useState } from 'react'
 import type { ActiveGenerationState } from '@/lib/store/generation'
 import { useGenerationStore } from '@/lib/store/generation'
+import { useSessionStore } from '@/lib/store/session'
 import { deleteGenerationJob, patchFavorite, postImageGeneration, postVideoGeneration, postAudioGeneration } from '@/lib/api/generation'
 import { nanoid } from 'nanoid'
 import { cn } from '@/lib/utils'
@@ -22,22 +23,22 @@ const STAGE_LABELS: Record<string, string> = {
 
 interface Props {
   job: ActiveGenerationState
-  workspaceId: string
   onClick?: () => void
 }
 
-export function GenerationCard({ job, workspaceId, onClick }: Props) {
+export function GenerationCard({ job, onClick }: Props) {
   const store = useGenerationStore()
+  const sessionStore = useSessionStore()
   const asset = job.assets[0]
   const isActive = !['completed', 'failed', 'cancelled'].includes(job.status)
   const [isFavorite, setIsFavorite] = useState(asset?.isFavorite ?? false)
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!asset) return
+    if (!asset || !sessionStore.sessionId) return
     setIsFavorite((v) => !v)
     try {
-      const res = await patchFavorite(asset.id)
+      const res = await patchFavorite(asset.id, sessionStore.sessionId)
       setIsFavorite(res.is_favorite)
     } catch {
       setIsFavorite((v) => !v)
@@ -46,14 +47,16 @@ export function GenerationCard({ job, workspaceId, onClick }: Props) {
 
   const handleCancel = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!sessionStore.sessionId) return
     try {
-      await deleteGenerationJob(job.jobId)
+      await deleteGenerationJob(job.jobId, sessionStore.sessionId)
       store.cancelJob(job.jobId)
     } catch { /* ignore */ }
   }
 
   const handleRetry = async (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!sessionStore.sessionId) return
     const ik = nanoid()
     store.setActiveJob({
       jobId: ik,
@@ -66,9 +69,9 @@ export function GenerationCard({ job, workspaceId, onClick }: Props) {
       createdAt: Date.now(),
     })
     try {
-      if (job.mode === 'image') await postImageGeneration({ prompt: job.prompt }, ik)
-      else if (job.mode === 'video') await postVideoGeneration({ prompt: job.prompt }, ik)
-      else if (job.mode === 'audio') await postAudioGeneration({ prompt: job.prompt }, ik)
+      if (job.mode === 'image') await postImageGeneration({ prompt: job.prompt }, ik, sessionStore.sessionId)
+      else if (job.mode === 'video') await postVideoGeneration({ prompt: job.prompt }, ik, sessionStore.sessionId)
+      else if (job.mode === 'audio') await postAudioGeneration({ prompt: job.prompt }, ik, sessionStore.sessionId)
     } catch { /* handled by WS failure event */ }
   }
 

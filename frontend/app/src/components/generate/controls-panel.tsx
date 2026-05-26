@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid'
 import { Loader2, Sparkles } from 'lucide-react'
 import type { GenerationMode } from '@aether/types'
 import { useGenerationStore } from '@/lib/store/generation'
+import { useSessionStore } from '@/lib/store/session'
 import { useQueryClient } from '@tanstack/react-query'
 import { postImageGeneration, postVideoGeneration, postAudioGeneration } from '@/lib/api/generation'
 import { QK } from '@/lib/api/query-keys'
@@ -30,14 +31,11 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-interface ControlsPanelProps {
-  workspaceId: string
-}
-
-export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
+export function ControlsPanel() {
   const [mode, setMode] = useState<GenerationMode>('image')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const store = useGenerationStore()
+  const sessionStore = useSessionStore()
   const queryClient = useQueryClient()
 
   const {
@@ -47,8 +45,13 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const onSubmit = async (values: FormValues) => {
-    if (mode === 'text') return  // coming soon
-    if (!workspaceId) return
+    if (mode === 'text') return // coming soon
+    if (!sessionStore.sessionId) return
+
+    if (sessionStore.generationsRemaining <= 0) {
+      toast.error('You’ve reached the free generation limit!')
+      return
+    }
 
     const idempotencyKey = nanoid()
     const seed = values.seed ? parseInt(values.seed, 10) : undefined
@@ -60,19 +63,19 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
 
     // Optimistic active job
     store.setActiveJob({
-      jobId: idempotencyKey,  // temp ID until real job_id returns
+      jobId: idempotencyKey, // temp ID until real job_id returns
       mode,
       prompt: values.prompt,
       status: 'queued',
       progress: 0,
       errorMessage: null,
       assets: [],
-      createdAt: Date.now(),
+      createdAt: 0,
     })
 
     try {
       if (mode === 'image') {
-        const result = await postImageGeneration(req, idempotencyKey)
+        const result = await postImageGeneration(req, idempotencyKey, sessionStore.sessionId)
         store.setActiveJob({
           jobId: result.job.id,
           mode,
@@ -81,11 +84,12 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
           progress: 100,
           errorMessage: null,
           assets: result.job.assets,
-          createdAt: Date.now(),
+          createdAt: 0,
         })
-        queryClient.invalidateQueries({ queryKey: QK.generations(workspaceId) })
+        queryClient.invalidateQueries({ queryKey: QK.generations(sessionStore.sessionId) })
+        sessionStore.decrementRemaining()
       } else if (mode === 'video') {
-        const result = await postVideoGeneration(req, idempotencyKey)
+        const result = await postVideoGeneration(req, idempotencyKey, sessionStore.sessionId)
         store.setActiveJob({
           jobId: result.job_id,
           mode,
@@ -94,10 +98,11 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
           progress: 0,
           errorMessage: null,
           assets: [],
-          createdAt: Date.now(),
+          createdAt: 0,
         })
+        sessionStore.decrementRemaining()
       } else if (mode === 'audio') {
-        const result = await postAudioGeneration(req, idempotencyKey)
+        const result = await postAudioGeneration(req, idempotencyKey, sessionStore.sessionId)
         store.setActiveJob({
           jobId: result.job_id,
           mode,
@@ -106,13 +111,14 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
           progress: 0,
           errorMessage: null,
           assets: [],
-          createdAt: Date.now(),
+          createdAt: 0,
         })
+        sessionStore.decrementRemaining()
       }
     } catch (err) {
       store.failJob(idempotencyKey, err instanceof ApiError ? err.message : 'Generation failed')
-      if (err instanceof ApiError && err.status === 402) {
-        toast.error('Not enough credits')
+      if (err instanceof ApiError && err.status === 429) {
+        toast.error('You’ve reached the free generation limit!')
       } else {
         toast.error('Generation failed — please try again')
       }
@@ -190,7 +196,7 @@ export function ControlsPanel({ workspaceId }: ControlsPanelProps) {
         <div className="mt-auto">
           <button
             type="submit"
-            disabled={isSubmitting || mode === 'text'}
+            disabled={isSubmitting || mode === 'text' || !sessionStore.sessionId}
             className="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold py-3 rounded-full text-sm hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? (

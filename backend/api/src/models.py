@@ -41,12 +41,22 @@ class Project(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class Session(Base):
+    __tablename__ = 'sessions'
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    generations_used: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class GenerationJob(Base):
     __tablename__ = 'generation_jobs'
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
-    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'), index=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
     project_id: Mapped[str | None] = mapped_column(ForeignKey('projects.id'), nullable=True, index=True)
     mode: Mapped[str] = mapped_column(String(20), index=True)
     prompt: Mapped[str] = mapped_column(Text)
@@ -84,8 +94,7 @@ class Asset(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     generation_job_id: Mapped[str] = mapped_column(ForeignKey('generation_jobs.id'), index=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
-    workspace_id: Mapped[str] = mapped_column(ForeignKey('workspaces.id'), index=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
     generation_index: Mapped[int] = mapped_column(Integer, default=0)
     type: Mapped[str] = mapped_column(String(20))
     storage_key: Mapped[str] = mapped_column(Text)

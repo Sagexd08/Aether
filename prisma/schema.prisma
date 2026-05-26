@@ -60,9 +60,20 @@ model Project {
   @@map("projects")
 }
 
+model Session {
+  id                  String   @id @db.VarChar(36)
+  session_id          String   @unique @db.VarChar(64)
+  generations_used    Int      @default(0)
+  created_at          DateTime @default(now())
+  expires_at          DateTime
+  last_seen_at        DateTime @default(now())
+
+  @@map("sessions")
+}
+
 model Generation {
   id              String   @id @db.VarChar(36)
-  user_id         String   @db.VarChar(36)
+  session_id      String   @db.VarChar(64)
   mode            String   @db.VarChar(20)
   status          String   @default("queued") @db.VarChar(20)
   prompt          String
@@ -73,7 +84,6 @@ model Generation {
   credits_used    Int      @default(0)
   created_at      DateTime @default(now())
 
-  user   User    @relation(fields: [user_id], references: [id])
   assets Asset[]
 
   @@map("generations")
@@ -81,7 +91,7 @@ model Generation {
 
 model Asset {
   id            String   @id @db.VarChar(36)
-  workspace_id  String   @db.VarChar(36)
+  session_id    String   @db.VarChar(64)
   generation_id String?  @db.VarChar(36)
   kind          String   @db.VarChar(40)
   name          String   @db.VarChar(255)
@@ -89,7 +99,6 @@ model Asset {
   metadata_json Json     @default("{}")
   created_at    DateTime @default(now())
 
-  workspace  Workspace   @relation(fields: [workspace_id], references: [id])
   generation Generation? @relation(fields: [generation_id], references: [id])
 
   @@map("assets")

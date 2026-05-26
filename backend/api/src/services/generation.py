@@ -6,15 +6,15 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import GenerationJob, Asset, User
+from ..models import GenerationJob, Asset, Session as DBSession
 from ..schemas import GenerationJobOut, AssetOut
 from .inference import HuggingFaceProvider, CREDIT_COSTS, DEFAULT_MODELS, ProviderUpdate
 
 _provider = HuggingFaceProvider()
 
 
-async def _publish(redis, workspace_id: str, event: dict) -> None:
-    await redis.publish(f'ws:workspace:{workspace_id}', json.dumps(event))
+async def _publish(redis, session_id: str, event: dict) -> None:
+    await redis.publish(f'ws:session:{session_id}', json.dumps(event))
 
 
 async def _transition(
@@ -39,10 +39,10 @@ async def _transition(
     await db.flush()
     # Don't publish progress events for terminal states — they have dedicated event types
     if status not in ('completed', 'failed', 'cancelled'):
-        await _publish(redis, job.workspace_id, {
+        await _publish(redis, job.session_id, {
             'type': 'generation.progress',
             'jobId': job.id,
-            'workspaceId': job.workspace_id,
+            'sessionId': job.session_id,
             'ts': int(time.time() * 1000),
             'payload': {'status': status, 'progress': progress},
         })
@@ -50,8 +50,7 @@ async def _transition(
 
 async def create_job(
     db: AsyncSession,
-    user: User,
-    workspace_id: str,
+    session: DBSession,
     mode: str,
     prompt: str,
     *,
@@ -61,7 +60,7 @@ async def create_job(
     metadata: dict | None = None,
     idempotency_key: str | None = None,
 ) -> GenerationJob:
-    """Create a job and reserve credits. Raises ValueError if insufficient credits."""
+    """Create a job and check generation limit."""
     # Idempotency check
     if idempotency_key:
         existing = await db.scalar(
@@ -70,19 +69,9 @@ async def create_job(
         if existing:
             return existing
 
-    # Refresh user from DB to get current credit state (reduces but doesn't eliminate race)
-    await db.refresh(user)
-    cost = CREDIT_COSTS.get(mode, 10)
-    available = user.credits_remaining - user.credits_reserved
-    if available < cost:
-        raise ValueError('insufficient_credits')
-
-    user.credits_reserved += cost
-
     job = GenerationJob(
         id=str(uuid4()),
-        user_id=user.id,
-        workspace_id=workspace_id,
+        session_id=session.session_id,
         mode=mode,
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -91,7 +80,6 @@ async def create_job(
         seed=seed,
         metadata_json=metadata or {},
         idempotency_key=idempotency_key,
-        credits_cost=cost,
         status='queued',
         progress=0,
     )
@@ -104,7 +92,7 @@ async def run_job(
     db: AsyncSession,
     redis,
     job: GenerationJob,
-    user: User,
+    session: DBSession,
 ) -> Asset | None:
     """Drive job through full lifecycle. Returns Asset on success, None on failure/cancel."""
     queue_start = time.time()
@@ -113,7 +101,6 @@ async def run_job(
         async for update in _provider.generate(job):
             if job.cancel_requested and update.status not in ('completed', 'failed', 'cancelled'):
                 await _transition(db, redis, job, 'cancelled', job.progress)
-                user.credits_reserved -= (job.credits_cost or 0)
                 await db.commit()
                 return None
 
@@ -123,12 +110,11 @@ async def run_job(
                     error_message=update.error_message,
                     error_code=update.error_code,
                 )
-                user.credits_reserved -= (job.credits_cost or 0)
                 await db.commit()
-                await _publish(redis, job.workspace_id, {
+                await _publish(redis, job.session_id, {
                     'type': 'generation.failed',
                     'jobId': job.id,
-                    'workspaceId': job.workspace_id,
+                    'sessionId': job.session_id,
                     'ts': int(time.time() * 1000),
                     'payload': {'error': update.error_message or 'Unknown error', 'errorCode': update.error_code},
                 })
@@ -136,7 +122,6 @@ async def run_job(
 
             if update.status == 'cancelled':
                 await _transition(db, redis, job, 'cancelled', job.progress)
-                user.credits_reserved -= (job.credits_cost or 0)
                 await db.commit()
                 return None
 
@@ -153,8 +138,7 @@ async def run_job(
                 asset = Asset(
                     id=str(uuid4()),
                     generation_job_id=job.id,
-                    user_id=job.user_id,
-                    workspace_id=job.workspace_id,
+                    session_id=job.session_id,
                     generation_index=0,
                     type=job.mode,
                     storage_key=update.storage_key or '',
@@ -169,9 +153,7 @@ async def run_job(
                 job.persist_duration_ms = int((time.time() - persist_start) * 1000)
                 job.completed_at = datetime.utcnow()
 
-                # Finalize credits
-                user.credits_reserved -= (job.credits_cost or 0)
-                user.credits_remaining -= (job.credits_cost or 0)
+                session.generations_used += 1
 
                 await _transition(db, redis, job, 'completed', 100)
                 await db.flush()
@@ -181,10 +163,10 @@ async def run_job(
 
                 await db.commit()
 
-                await _publish(redis, job.workspace_id, {
+                await _publish(redis, job.session_id, {
                     'type': 'generation.completed',
                     'jobId': job.id,
-                    'workspaceId': job.workspace_id,
+                    'sessionId': job.session_id,
                     'ts': int(time.time() * 1000),
                     'payload': {
                         'job': job_out.model_dump(mode='json', by_alias=True),
@@ -202,7 +184,6 @@ async def run_job(
                 db, redis, job, 'failed', job.progress,
                 error_message=str(exc), error_code='internal_error',
             )
-            user.credits_reserved -= (job.credits_cost or 0)
             await db.commit()
         except Exception:
             pass  # best-effort cleanup; don't mask the original exception

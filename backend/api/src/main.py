@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .db import init_db
-from .routers import auth, datasets, generations, health, ops, registry, training, workspaces
+from .routers import session, datasets, generations, health, ops, registry, training
 from . import realtime
 
 
@@ -52,8 +52,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
-app.include_router(auth.router, prefix='/api/auth', tags=['auth'])
-app.include_router(workspaces.router, prefix='/api/workspaces', tags=['workspaces'])
+app.include_router(session.router, prefix='/api/session', tags=['session'])
 app.include_router(generations.router, prefix='/api/generation', tags=['generation'])
 app.include_router(datasets.router, prefix='/api/datasets', tags=['datasets'])
 app.include_router(training.router, prefix='/api/training', tags=['training'])

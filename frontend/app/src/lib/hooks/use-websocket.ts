@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { WSClientMessage, WSMessage } from '@aether/types'
-import { useAuthStore } from '@/lib/store/auth'
+import { useSessionStore } from '@/lib/store/session'
 import { toast } from '@/components/ui/toast'
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000'
@@ -10,10 +10,11 @@ const MAX_RETRIES = 5
 const PING_INTERVAL_MS = 15_000
 const PONG_TIMEOUT_MS = 10_000
 
-export function useWorkspaceWebSocket(workspaceId: string) {
-  const token = useAuthStore((s) => s.token)
+export function useSessionWebSocket() {
+  const sessionId = useSessionStore((s) => s.sessionId)
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
   const [lastEvent, setLastEvent] = useState<WSMessage | null>(null)
+  const [retryTick, setRetryTick] = useState(0)
 
   const wsRef = useRef<WebSocket | null>(null)
   const retriesRef = useRef(0)
@@ -30,9 +31,9 @@ export function useWorkspaceWebSocket(workspaceId: string) {
   }, [])
 
   const connect = useCallback(() => {
-    if (!token || !workspaceId || !mountedRef.current) return
+    if (!sessionId || !mountedRef.current) return
 
-    const ws = new WebSocket(`${WS_URL}/ws/${workspaceId}?token=${token}`)
+    const ws = new WebSocket(`${WS_URL}/ws/${sessionId}`)
     wsRef.current = ws
     setStatus('connecting')
 
@@ -86,24 +87,26 @@ export function useWorkspaceWebSocket(workspaceId: string) {
       backoffRef.current = Math.min(backoffRef.current * 2, 30_000)
       toast.info('Reconnecting…')
       setTimeout(() => {
-        if (mountedRef.current) connect()
+        if (mountedRef.current) setRetryTick((tick) => tick + 1)
       }, delay)
     }
 
     ws.onerror = () => {
       ws.close()
     }
-  }, [token, workspaceId, clearPingTimers])
+  }, [sessionId, clearPingTimers])
 
   useEffect(() => {
     mountedRef.current = true
-    connect()
+    if (sessionId) {
+      connect()
+    }
     return () => {
       mountedRef.current = false
       clearPingTimers()
       wsRef.current?.close()
     }
-  }, [connect, clearPingTimers])
+  }, [connect, clearPingTimers, retryTick, sessionId])
 
   const send = useCallback((msg: WSClientMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -112,4 +115,8 @@ export function useWorkspaceWebSocket(workspaceId: string) {
   }, [])
 
   return { status, lastEvent, send }
+}
+
+export function useWorkspaceWebSocket(_workspaceId?: string) {
+  return useSessionWebSocket()
 }

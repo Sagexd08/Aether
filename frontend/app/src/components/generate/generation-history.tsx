@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { useGenerationStore } from '@/lib/store/generation'
+import { useSessionStore } from '@/lib/store/session'
 import { getGenerationJobs } from '@/lib/api/generation'
 import { QK } from '@/lib/api/query-keys'
 import { GenerationCard } from './generation-card'
@@ -16,25 +17,23 @@ const MODE_FILTERS: { value: GenerationMode | 'all'; label: string }[] = [
   { value: 'audio', label: 'Audio' },
 ]
 
-interface Props {
-  workspaceId: string
-}
-
-export function GenerationHistory({ workspaceId }: Props) {
+export function GenerationHistory() {
+  const sessionStore = useSessionStore()
   const [modeFilter, setModeFilter] = useState<GenerationMode | 'all'>('all')
   const sentinelRef = useRef<HTMLDivElement>(null)
   const store = useGenerationStore()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: QK.generations(workspaceId, modeFilter === 'all' ? undefined : modeFilter),
+    queryKey: QK.generations(sessionStore.sessionId ?? '', modeFilter === 'all' ? undefined : modeFilter),
     queryFn: ({ pageParam }) =>
-      getGenerationJobs(workspaceId, {
+      getGenerationJobs(sessionStore.sessionId ?? '', {
         mode: modeFilter === 'all' ? undefined : modeFilter,
         cursor: pageParam as string | undefined,
         limit: 20,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
+    enabled: !!sessionStore.sessionId,
   })
 
   // Intersection observer for infinite scroll
@@ -88,7 +87,6 @@ export function GenerationHistory({ workspaceId }: Props) {
             <GenerationCard
               key={job.jobId}
               job={job}
-              workspaceId={workspaceId}
               onClick={() => store.setFocusedJob(job.jobId)}
             />
           ))}
@@ -108,7 +106,6 @@ export function GenerationHistory({ workspaceId }: Props) {
               <GenerationCard
                 key={job.id}
                 job={displayJob}
-                workspaceId={workspaceId}
                 onClick={() => store.setFocusedJob(job.id)}
               />
             )

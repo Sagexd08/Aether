@@ -281,3 +281,59 @@ class JobsPageResponse(BaseModel):
 
 class FavoriteResponse(BaseModel):
     is_favorite: bool
+
+
+class CreateSessionResponse(BaseModel):
+    session_id: str
+    generation_limit_remaining: int
+
+
+class AssetOut(OrmModel):
+    id: str
+    generation_job_id: str
+    session_id: str
+    generation_index: int
+    type: str
+    storage_key: str
+    mime_type: str
+    file_size_bytes: int | None
+    width: int | None
+    height: int | None
+    duration_seconds: float | None
+    metadata_json: dict = Field(serialization_alias='metadata')
+    is_favorite: bool
+    visibility: str
+    status: str
+    created_at: datetime
+
+
+class GenerationJobOut(OrmModel):
+    id: str
+    session_id: str
+    project_id: str | None
+    mode: str
+    prompt: str
+    negative_prompt: str | None
+    model: str
+    provider: str
+    seed: int | None
+    status: str
+    progress: int
+    error_message: str | None
+    last_error_code: str | None
+    retry_count: int
+    cancel_requested: bool
+    credits_cost: int | None = Field(default=None, serialization_alias='creditsCosted')
+    idempotency_key: str | None = None
+    metadata_json: dict = Field(serialization_alias='metadata')
+    visibility: str
+    preview_storage_key: str | None
+    source_generation_job_id: str | None
+    queue_wait_ms: int | None
+    inference_duration_ms: int | None
+    persist_duration_ms: int | None
+    started_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    assets: list[AssetOut] = []

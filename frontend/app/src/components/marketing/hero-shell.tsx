@@ -14,8 +14,8 @@ export function HeroShell() {
           <Link href="#pricing">Pricing</Link>
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/signin" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur transition hover:bg-white/10">Sign In</Link>
-          <Link href="/signup" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:scale-[1.02]">Launch Workspace</Link>
+          <Link href="/workspace" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/90 backdrop-blur transition hover:bg-white/10">Sign In</Link>
+          <Link href="/workspace/generate" className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:scale-[1.02]">Launch Workspace</Link>
         </div>
       </header>
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-7xl flex-col justify-center px-6 pb-20 pt-10 md:px-8">
@@ -30,7 +30,7 @@ export function HeroShell() {
             AETHER AI unifies text, image, video, audio, agents, and workflows inside a luxury-grade interface built for creators who want velocity without sacrificing taste.
           </p>
           <div className="fade-rise-delay-2 mt-10 flex flex-wrap items-center gap-4">
-            <Link href="/signup" className="rounded-full bg-white px-7 py-3 text-sm font-medium text-black transition hover:scale-[1.03]">Begin Journey</Link>
+            <Link href="/workspace/generate" className="rounded-full bg-white px-7 py-3 text-sm font-medium text-black transition hover:scale-[1.03]">Begin Journey</Link>
             <Link href="/workspace" className="rounded-full border border-white/10 bg-white/5 px-7 py-3 text-sm text-white/80 transition hover:bg-white/10">Preview Workspace</Link>
           </div>
         </div>

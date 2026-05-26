@@ -4,6 +4,7 @@ import { Download, Heart } from 'lucide-react'
 import { useState } from 'react'
 import type { ActiveGenerationState } from '@/lib/store/generation'
 import { patchFavorite } from '@/lib/api/generation'
+import { useSessionStore } from '@/lib/store/session'
 
 interface Props {
   job: ActiveGenerationState
@@ -19,6 +20,7 @@ const STAGE_LABELS: Record<string, string> = {
 
 export function VideoOutput({ job }: Props) {
   const asset = job.assets[0]
+  const sessionStore = useSessionStore()
   const [isFavorite, setIsFavorite] = useState(asset?.isFavorite ?? false)
 
   if (job.status !== 'completed' || !asset) {
@@ -39,9 +41,10 @@ export function VideoOutput({ job }: Props) {
   }
 
   const handleFavorite = async () => {
+    if (!sessionStore.sessionId) return
     setIsFavorite((v) => !v)
     try {
-      const res = await patchFavorite(asset.id)
+      const res = await patchFavorite(asset.id, sessionStore.sessionId)
       setIsFavorite(res.is_favorite)
     } catch {
       setIsFavorite((v) => !v)

@@ -10,20 +10,9 @@ export type GenerationStatus =
   | 'failed'
   | 'cancelled'
 
-export interface User {
-  id: string
-  email: string
-  name: string
-  avatarUrl?: string | null
-  creditsRemaining: number
-  creditsReserved: number
-  createdAt: string
-}
-
 export interface GenerationJob {
   id: string
-  userId: string
-  workspaceId: string
+  sessionId: string
   projectId: string | null
   mode: GenerationMode
   prompt: string
@@ -57,8 +46,7 @@ export interface GenerationJob {
 export interface Asset {
   id: string
   generationJobId: string
-  userId: string
-  workspaceId: string
+  sessionId: string
   generationIndex: number
   type: 'image' | 'video' | 'audio'
   storageKey: string
@@ -128,16 +116,21 @@ export interface NotificationItem {
   read: boolean
 }
 
-export interface AuthResponse {
-  accessToken: string
-  user: User
-}
-
 export interface Workspace {
   id: string
   name: string
   plan: 'studio' | 'pro' | 'enterprise'
   createdAt: string
+}
+
+export interface UserWithWorkspace {
+  id: string
+  email: string
+  name: string
+  creditsRemaining: number
+  creditsReserved: number
+  createdAt: string
+  workspaceId: string
 }
 
 export interface Project {
@@ -153,34 +146,29 @@ export interface WorkspaceDetail extends Workspace {
   projects: Project[]
 }
 
-export interface UserWithWorkspace extends User {
-  workspaceId: string
-}
-
 // Server → Client WebSocket events
 export type WSMessage =
-  | { type: 'connected'; workspaceId: string; userId: string; ts: number }
+  | { type: 'connected'; sessionId: string; ts: number }
   | { type: 'error'; code: string; message: string; ts: number }
   | { type: 'pong'; ts: number }
-  | { type: 'workspace.presence'; userIds: string[]; ts: number }
   | {
       type: 'generation.progress'
       jobId: string
-      workspaceId: string
+      sessionId: string
       ts: number
       payload: { status: GenerationStatus; progress: number }
     }
   | {
       type: 'generation.completed'
       jobId: string
-      workspaceId: string
+      sessionId: string
       ts: number
       payload: { job: GenerationJob; assets: Asset[] }
     }
   | {
       type: 'generation.failed'
       jobId: string
-      workspaceId: string
+      sessionId: string
       ts: number
       payload: { error: string; errorCode: string | null }
     }
