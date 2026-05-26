@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -56,14 +56,14 @@ export function AuthCard({
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
     setError,
+    control,
   } = useForm<SignUpFields | SignInFields>({
     resolver: zodResolver(mode === 'signup' ? signUpSchema : signInSchema),
   })
 
-  const password = watch('password') ?? ''
+  const password = useWatch({ control, name: 'password' }) ?? ''
   const strength = mode === 'signup' ? passwordStrength(password) : 0
 
   async function onSubmit(data: SignUpFields | SignInFields) {
