@@ -8,12 +8,9 @@ import { UpgradeModal } from '@/components/generate/upgrade-modal'
 import { useGenerationReconcile } from '@/lib/hooks/use-generation-reconcile'
 import { useSessionWebSocket } from '@/lib/hooks/use-websocket'
 import { useSessionStore } from '@/lib/store/session'
-import { useState } from 'react'
-import type { GenerationMode } from '@aether/types'
 
 export default function GeneratePage() {
   const sessionStore = useSessionStore()
-  const [activeMode, setActiveMode] = useState<GenerationMode>('image')
 
   const { lastEvent } = useSessionWebSocket()
   useGenerationReconcile(lastEvent)
@@ -32,7 +29,7 @@ export default function GeneratePage() {
 
             {/* Right: output */}
             <div className="bg-[#0c0f1a] border border-white/10 rounded-2xl p-5">
-              <OutputPanel mode={activeMode} />
+              <OutputPanel />
             </div>
           </div>
 

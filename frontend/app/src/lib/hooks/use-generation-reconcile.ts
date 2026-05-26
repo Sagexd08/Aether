@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { WSMessage, GenerationJob, Asset } from '@aether/types'
+import type { WSMessage, GenerationJob } from '@aether/types'
 import { useGenerationStore } from '@/lib/store/generation'
 import { useSessionStore } from '@/lib/store/session'
 import { getInflightJobs } from '@/lib/api/generation'

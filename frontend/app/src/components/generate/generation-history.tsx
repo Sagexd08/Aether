@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { AnimatePresence } from 'framer-motion'
 import { useGenerationStore } from '@/lib/store/generation'
 import { useSessionStore } from '@/lib/store/session'

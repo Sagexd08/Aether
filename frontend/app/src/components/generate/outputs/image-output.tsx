@@ -62,7 +62,6 @@ export function ImageOutput({ job }: Props) {
         <p className="text-white/40 text-sm">Failed to load image</p>
       ) : (
         <AnimatePresence>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <motion.img
             key={`${asset.id}-${retries}`}
             src={asset.storageKey}

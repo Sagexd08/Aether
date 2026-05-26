@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Sparkles, ArrowRight } from 'lucide-react'
+import { Sparkles, ArrowRight } from 'lucide-react'
 import { useSessionStore } from '@/lib/store/session'
-import { cn } from '@/lib/utils'
 
 export function UpgradeModal() {
-  const [isOpen, setIsOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -17,7 +15,7 @@ export function UpgradeModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsOpen(true)} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div className="relative bg-[#0c0f1a] border border-white/20 rounded-3xl p-8 max-w-md w-full shadow-2xl shadow-white/5">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -25,8 +23,8 @@ export function UpgradeModal() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">You’ve reached the limit</h2>
-              <p className="text-white/60 text-sm">But your journey doesn’t have to end.</p>
+              <h2 className="text-xl font-semibold text-white">You've reached the limit</h2>
+              <p className="text-white/60 text-sm">But your journey doesn't have to end.</p>
             </div>
           </div>
         </div>
@@ -36,8 +34,8 @@ export function UpgradeModal() {
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-green-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">You’re on the list</h3>
-            <p className="text-white/60 text-sm">We’ll let you know as soon as early access opens.</p>
+            <h3 className="text-lg font-semibold text-white mb-2">You're on the list</h3>
+            <p className="text-white/60 text-sm">We'll let you know as soon as early access opens.</p>
           </div>
         ) : (
           <div className="space-y-6">

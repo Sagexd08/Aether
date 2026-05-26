@@ -7,7 +7,21 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": ["dist/**", ".next/**"],
+      "env": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "JWT_SECRET",
+        "JWT_ALGORITHM",
+        "ACCESS_TOKEN_TTL_MINUTES",
+        "REFRESH_TOKEN_TTL_DAYS",
+        "ENVIRONMENT",
+        "RATE_LIMIT_PER_MINUTE",
+        "KAGGLE_USERNAME",
+        "KAGGLE_KEY",
+        "MODEL_REGISTRY_PATH",
+        "TRAINING_OUTPUT_PATH"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
