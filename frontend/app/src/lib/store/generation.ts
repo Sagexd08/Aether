@@ -35,7 +35,7 @@ function loadFocusedId(): string | undefined {
   return sessionStorage.getItem(FOCUSED_KEY) ?? undefined
 }
 
-export const useGenerationStore = create<GenerationStore>((set, get) => ({
+export const useGenerationStore = create<GenerationStore>((set) => ({
   activeJobs: {},
   focusedJobId: loadFocusedId(),
 
