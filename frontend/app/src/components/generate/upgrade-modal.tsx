@@ -23,8 +23,8 @@ export function UpgradeModal() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">You've reached the limit</h2>
-              <p className="text-white/60 text-sm">But your journey doesn't have to end.</p>
+              <h2 className="text-xl font-semibold text-white">You&apos;ve reached the limit</h2>
+              <p className="text-white/60 text-sm">But your journey doesn&apos;t have to end.</p>
             </div>
           </div>
         </div>
@@ -34,8 +34,8 @@ export function UpgradeModal() {
             <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
               <Sparkles className="w-8 h-8 text-green-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">You're on the list</h3>
-            <p className="text-white/60 text-sm">We'll let you know as soon as early access opens.</p>
+            <h3 className="text-lg font-semibold text-white mb-2">You&apos;re on the list</h3>
+            <p className="text-white/60 text-sm">We&apos;ll let you know as soon as early access opens.</p>
           </div>
         ) : (
           <div className="space-y-6">

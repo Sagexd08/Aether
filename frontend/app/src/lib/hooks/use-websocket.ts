@@ -118,5 +118,6 @@ export function useSessionWebSocket() {
 }
 
 export function useWorkspaceWebSocket(workspaceId?: string) {
+  void workspaceId
   return useSessionWebSocket()
 }
