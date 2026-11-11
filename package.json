@@ -55,7 +55,7 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "^2.1.9",
-    "better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^13.0.3",
     "concurrently": "^8.2.2",
     "supertest": "^7.3.2",
     "tsx": "^4.7.0",
