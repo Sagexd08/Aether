@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import pg from 'pg';
 import { existsSync } from 'fs';
 import { config } from '../src/config/env.js';
-import { initializeDatabase } from '../src/database/schema.js';
+import { migrate } from '../src/database/migrate.js';
 import { closeDb } from '../src/database/db.js';
 
 const TABLES = [
@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   }
 
   if (!config.databaseUrl) throw new Error('DATABASE_URL is not set');
-  await initializeDatabase();
+  await migrate();
   const client = new pg.Client({ connectionString: config.databaseUrl });
   await client.connect();
 

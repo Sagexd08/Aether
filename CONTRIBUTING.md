@@ -9,13 +9,15 @@
 
 ## Before opening a pull request
 
-Run all three and include the result:
+Run these and include the result:
 
 ```
-npx tsc -p server/tsconfig.json --noEmit
-npm run test:policy
+npm run typecheck
+npm test
 npm run smoke
 ```
+
+`npm test` runs the unit tests. Set `TEST_DATABASE_URL` to a throwaway Postgres to run the integration tests too (CI does this with a service container). `cd ml_service && python -m pytest tests` covers the model service.
 
 For client changes also run `cd client && npx tsc --noEmit && npm run build`.
 
@@ -24,5 +26,5 @@ For client changes also run `cd client && npx tsc --noEmit && npm run build`.
 - No comments in code. Put explanations in `docs/`.
 - No pretrained weights. Models in this project are trained from scratch on data with a documented licence.
 - Commits follow `type: description` (feat, fix, refactor, docs, test, chore, perf, ci).
-- Database changes go through `server/src/database/schema.ts`; keep them idempotent.
+- Database changes are a new numbered file in `server/migrations/` (`NNN_name.sql`), applied in order at startup and recorded in `schema_migrations`. Never edit a migration that has shipped.
 - Report security problems privately, see `SECURITY.md`.

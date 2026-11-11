@@ -6,6 +6,7 @@ import { Button } from './ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginModal } from './LoginModal';
 import { RegisterModal } from './RegisterModal';
+import { SiteFooter } from './SiteFooter';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export default function Layout({ children, isDark, setIsDark }: LayoutProps) {
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   const navItems = [
-    { path: '/', label: 'Generate', icon: Sparkles },
+    { path: '/create', label: 'Create', icon: Sparkles },
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/upscale', label: 'Upscale', icon: Image },
   ];
@@ -30,9 +31,7 @@ export default function Layout({ children, isDark, setIsDark }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative">
-      <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-primary/5 -z-10" />
-      
+    <div className="min-h-screen text-foreground relative">
       <nav className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold group">
@@ -42,9 +41,7 @@ export default function Layout({ children, isDark, setIsDark }: LayoutProps) {
             >
               <Sparkles className="w-6 h-6 text-primary" />
             </motion.div>
-            <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-              Aether AI
-            </span>
+            <span className="font-light tracking-tight">Aether AI</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -128,6 +125,8 @@ export default function Layout({ children, isDark, setIsDark }: LayoutProps) {
           {children}
         </motion.div>
       </main>
+
+      <SiteFooter />
 
       <LoginModal
         isOpen={isLoginOpen}

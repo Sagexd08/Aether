@@ -1,42 +1,70 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 60 20% 98%;
+    --foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 60 20% 98%;
+    --secondary: 60 8% 94%;
+    --muted-foreground: 60 2% 40%;
+    --border: 0 0% 89%;
+    --ring: 0 0% 10%;
+    --destructive: 3 71% 41%;
+    --surface: 255 255 255;
+    --halo: 0 0 0;
+    --halo-alpha: 0.08;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --background: 200 6% 6%;
+    --foreground: 60 9% 92%;
+    --primary: 60 9% 92%;
+    --primary-foreground: 200 6% 6%;
+    --secondary: 200 5% 13%;
+    --muted-foreground: 60 3% 64%;
+    --border: 200 5% 18%;
+    --ring: 60 9% 92%;
+    --destructive: 4 80% 62%;
+    --surface: 20 22 24;
+    --halo: 255 255 255;
+    --halo-alpha: 0.06;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .surface {
+    background: rgb(var(--surface) / 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border));
+  }
+
+  .halo {
+    background: rgb(var(--halo) / var(--halo-alpha));
+    filter: blur(60px);
+  }
+
+  .pixelated {
+    image-rendering: pixelated;
   }
 }
 
@@ -47,15 +75,23 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-  
+
   .backdrop-blur-md {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
-  
+
   .backdrop-blur-sm {
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -58,3 +58,17 @@ verbatim request in text, then retry. Heredocs with quotes can break the Bash to
 - Secrets: user chose NOT to rotate the old Neon, Hugging Face and Kaggle keys. They live only in the ignored root .env (ml_service/.env was merged into it). Scan of staged files found no secrets. gitleaks not run (no binary, Docker off).
 - GitHub: logged in as Sagexd08. No repo named Etheria/Aether AI exists; Sagexd08/Aether is a different, existing project. Push target undecided.
 - Next: Phase C (integration tests, migrations, containers, CI), size L. Ask before starting.
+
+## Phase C status (2026-11-11)
+- C1 done: server/src/app.ts exports the app, index.ts only starts it. vitest.config.ts; `npm test` = 60 passed, 11 skipped (integration needs TEST_DATABASE_URL). `npm run typecheck`, `npm run test:coverage`. test:policy and check-prompt-policy.ts removed (moved into vitest).
+- Bug found by tests and fixed: normalizePrompt turned zero-width chars into spaces, so "na<ZWSP>ked" bypassed the policy; now stripped.
+- C3 done: server/migrations/001-003 + server/src/database/migrate.ts (schema_migrations ledger); schema.ts deleted. Verified on an empty in-process Postgres (PGlite) twice (idempotent) plus constraint rejections. Not run against a real server boot.
+- C6 done: retention + DELETE /api/data/mine existed from A4; added PNG tEXt "Provenance" chunk (server/src/utils/pngText.ts, ml train_step passed through imageGen).
+- C2 DONE and run: server/tests/integration.test.ts + routes.test.ts, 83/83 pass against postgres:16-alpine in Docker. Coverage services+middleware 88.6% statements (all:false in vitest.config.ts). Run locally: `docker run -d --name aether-test-pg -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test -p 54329:5432 postgres:16-alpine` then `TEST_DATABASE_URL=postgres://test:test@127.0.0.1:54329/test npm run test:coverage`. Never point TEST_DATABASE_URL at the dev DB (it clears rate_limits and cancels active jobs).
+- Bug found by tests and fixed: cancelling a running job returned 400 (abort handler marked it cancelled first, so cancelJob's UPDATE matched 0 rows).
+- C4 DONE and verified: images build, `compose up` reaches healthy on all 4 services, /api/health/ready = ready, a generated 64x64 PNG came back through nginx on CPU (~4 s) with the Provenance chunk (train_step 100000). Server/ml/client run as non-root (1000/10001/101); ml_service and postgres have no published ports and no egress; unauthenticated ml call = 401; migrations applied on a fresh DB. Needs runs/*/ckpt.pt and data/cache on the host (gitignored). `docker compose build` fails here on a buildx bake privilege prompt (fs.read=Dockerfile); workaround used: `docker build -f <file> -t aether-ai-<service> .` for server, client (client/Dockerfile), ml_service (Dockerfile.ml), then `docker compose up -d --no-build`.
+- C5 written, NOT RUN on GitHub: .github/workflows/ci.yml (server+postgres, client build, ml pytest, gitleaks). Every command in it was run locally except the gitleaks action.
+- Not done: `npm run smoke` after the server changes (needs the dev server + ml_service running); run it once.
+- ml_service/tests/test_app.py: 18 passed locally (pytest installed into Lexigraph_env).
+- Deviations: server has no own package.json (root one kept); migration runner is ~20 lines, not node-pg-migrate.
+- Next: `npm run smoke` once, then commit (nothing is committed; B and C are all staged/unstaged work), decide the push target, then Phase D (UI).

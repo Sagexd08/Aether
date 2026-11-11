@@ -51,7 +51,14 @@ export function useJobPolling(options: UseJobPollingOptions = {}) {
             clearInterval(pollingRef.current);
             pollingRef.current = null;
           }
-          onComplete?.(job);
+          const resultResponse = await fetch(`${API_BASE}/api/jobs/result/${jobId}`, { credentials: 'same-origin' });
+          if (!resultResponse.ok) {
+            onError?.('Failed to load the generated image');
+            return;
+          }
+          const full: Job = await resultResponse.json();
+          setActiveJob(full);
+          onComplete?.(full);
           return;
         }
 

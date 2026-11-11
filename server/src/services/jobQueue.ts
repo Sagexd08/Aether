@@ -1,6 +1,7 @@
 import { db, transaction } from '../database/db.js';
 import { generateRequestId } from '../utils/crypto.js';
 import { generateImage } from './imageGen.js';
+import { addPngText } from '../utils/pngText.js';
 import { MlUnavailableError } from './mlClient.js';
 import { writeFileSync } from 'fs';
 import { getUploadPath } from '../utils/storage.js';
@@ -172,7 +173,7 @@ class JobQueue {
       WHERE id = ? AND status IN ('pending', 'running')
     `, [jobId]);
 
-    return result.changes > 0;
+    return result.changes > 0 || controller !== undefined;
   }
 
   async getJob(jobId: string): Promise<Job | null> {
@@ -291,7 +292,7 @@ class JobQueue {
     }, PROGRESS_TICK_MS);
 
     try {
-      const imageBuffer = await generateImage({
+      const generated = await generateImage({
         prompt: params.positive_prompt,
         steps: params.steps,
         cfg_scale: params.cfg_scale,
@@ -310,7 +311,13 @@ class JobQueue {
       const requestId = generateRequestId();
       const filename = `${requestId}.png`;
       const imagePath = getUploadPath(filename);
-      writeFileSync(imagePath, imageBuffer);
+      const provenance = JSON.stringify({
+        generator: 'Aether AI T2I',
+        train_step: generated.trainStep,
+        created_utc: new Date().toISOString(),
+        request_id: requestId,
+      });
+      writeFileSync(imagePath, addPngText(generated.image, 'Provenance', provenance));
 
       const job = await this.getJob(jobId);
       if (job) {

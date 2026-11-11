@@ -26,7 +26,12 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unexpected error';
 }
 
-export async function generateImage(request: GenerationRequest): Promise<Buffer> {
+export interface GeneratedImage {
+  image: Buffer;
+  trainStep: number | null;
+}
+
+export async function generateImage(request: GenerationRequest): Promise<GeneratedImage> {
   try {
     const { data } = await callMl(() =>
       mlClient.post('/ml/generate-image', {
@@ -36,7 +41,10 @@ export async function generateImage(request: GenerationRequest): Promise<Buffer>
         seed: request.seed ?? randomInt(0, 2 ** 31),
       }, { signal: request.signal })
     );
-    return Buffer.from(data.image_base64, 'base64');
+    return {
+      image: Buffer.from(data.image_base64, 'base64'),
+      trainStep: Number.isFinite(data.train_step) ? data.train_step : null,
+    };
   } catch (error: unknown) {
     if (error instanceof MlUnavailableError) throw error;
     if (axios.isCancel(error)) throw Object.assign(new Error('AbortError'), { name: 'AbortError' });

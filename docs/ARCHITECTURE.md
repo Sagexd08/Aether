@@ -20,7 +20,7 @@
 
 ## Storage
 
-Neon Postgres. Main tables: `sessions`, `users`, `refresh_tokens`, `jobs`, `generations`, `rate_limits`, `guard_events`, `audit_log`. Definitions live in `server/src/database/schema.ts`.
+Neon Postgres. Main tables: `sessions`, `users`, `refresh_tokens`, `jobs`, `generations`, `rate_limits`, `guard_events`, `audit_log`. Definitions live in `server/migrations/*.sql`, applied in order at startup by `server/src/database/migrate.ts`.
 
 ## Model
 

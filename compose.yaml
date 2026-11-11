@@ -1,0 +1,70 @@
+name: aether-ai
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aether
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: aether
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aether -d aether"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ml_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ml
+    environment:
+      ML_INTERNAL_TOKEN: ${ML_INTERNAL_TOKEN:?set ML_INTERNAL_TOKEN}
+      T2I_CKPT: ${T2I_CKPT:-}
+    volumes:
+      - ./runs:/app/runs:ro
+      - ./data/cache:/app/data/cache
+    networks: [internal]
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgres://aether:${POSTGRES_PASSWORD}@postgres:5432/aether
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
+      IP_HASH_SALT: ${IP_HASH_SALT:?set IP_HASH_SALT}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:?set ADMIN_API_TOKEN}
+      ML_INTERNAL_TOKEN: ${ML_INTERNAL_TOKEN:?set ML_INTERNAL_TOKEN}
+      ML_SERVICE_URL: http://ml_service:5000
+      CORS_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
+      TRUST_PROXY: "1"
+    volumes:
+      - uploads:/data/uploads
+    networks: [internal, web]
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    depends_on: [server]
+    ports:
+      - "8080:8080"
+    networks: [web]
+
+networks:
+  internal:
+    internal: true
+  web: {}
+
+volumes:
+  pgdata: {}
+  uploads: {}
